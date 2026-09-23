@@ -6,6 +6,9 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from pilot import Pilot,ROOT,Blocked,read,write,locked
 from content_contract import validate_content
 
+# Rules for the detailed script, shared by the single call and every long-script chunk.
+DETAIL_RULES='Mỗi cảnh có nhiều images/beats khi có lý do; được tái sử dụng ảnh. based_on chỉ ảnh trước trong cùng cảnh. Mỗi nhịp neo vào nguyên văn lời dẫn và lần xuất hiện; nhịp đầu neo đầu câu đầu; riêng vi/en. visible_text là danh sách chữ duy nhất AI được vẽ; không ghi mã nhân vật/cảnh/ảnh trong mô tả nhìn thấy. Chữ tạo cùng hình. Không bịa đã đo thời lượng. claims trích phát biểu và dữ kiện nguyên văn từ nguồn. Phản hồi sửa phải có revision_response, nêu rõ unresolved; không tự nhận đã được duyệt.'
+
 def invoke(prompt,schema,workspace,conversation=None,timeout=180):
  binary=shutil.which('agy')
  if not binary:raise Blocked('AGY_NOT_INSTALLED: install Antigravity CLI')
@@ -79,7 +82,7 @@ def generate(p,job):
     if {r for x in outline['outline'] for r in x['requirements']} != {x['id'] for x in b['required_points']}:raise Blocked('OUTLINE: missing or unknown requirements')
     write(out/'outline.json',outline)
     prompt+='\nDàn ý đã kiểm tra cấu trúc (chưa duyệt chất lượng): '+json.dumps(outline,ensure_ascii=False)
-    prompt+='\nViết đầy đủ content-v3, giữ nguyên outline. Mỗi cảnh có nhiều images/beats khi có lý do; được tái sử dụng ảnh. based_on chỉ ảnh trước trong cùng cảnh. Mỗi nhịp neo vào nguyên văn lời dẫn và lần xuất hiện; nhịp đầu neo đầu câu đầu; riêng vi/en. visible_text là danh sách chữ duy nhất AI được vẽ; không ghi mã nhân vật/cảnh/ảnh trong mô tả nhìn thấy. Chữ tạo cùng hình. Không bịa đã đo thời lượng. claims trích phát biểu và dữ kiện nguyên văn từ nguồn. Phản hồi sửa phải có revision_response, nêu rõ unresolved; không tự nhận đã được duyệt.'
+    prompt+='\nViết đầy đủ content-v3, giữ nguyên outline. '+DETAIL_RULES
     result=invoke(prompt+style,read(p.root/'schemas/content-v3.json'),out)
     if result['structured_output'].get('outline') != outline['outline']:raise Blocked('OUTLINE: detailed script changed outline')
   else:

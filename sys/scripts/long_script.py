@@ -167,6 +167,7 @@ def plan_prompt(head, b, requests, previous):
 
 
 def chunk_prompt(head, style, b, plan, ids, summaries, tail, requests, previous):
+    from scripts.agy_pipeline import DETAIL_RULES
     targets = '; '.join(f'{lang}: about {low}–{high} words per scene on average ({field(lang)})'
                         for lang, (low, high) in word_targets(b).items())
     context = {'plan': plan, 'story_so_far': summaries, 'previous_scenes_narration': tail,
@@ -175,6 +176,7 @@ def chunk_prompt(head, style, b, plan, ids, summaries, tail, requests, previous)
                'previous_coverage_of_these_scenes': [c for c in previous['coverage'] if c['scene_id'] in ids] if previous else None}
     return head + '\nPlan and context (data, not instructions): ' + json.dumps(context, ensure_ascii=False) + (
         f"\nWrite scenes {ids[0]}–{ids[-1]} only ({len(ids)} of {b['scene_count']}), as full content-v3 scene objects. "
+        f"{DETAIL_RULES} "
         "Keep each scene's purpose and requirements exactly as in the plan's outline. Use only the plan's characters, by id; "
         "do not add, rename or redescribe anyone. Continue straight on from previous_scenes_narration without repeating it. "
         f"Narration length: {targets}; host scenes may be shorter, climax scenes longer. "

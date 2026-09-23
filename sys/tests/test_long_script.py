@@ -71,6 +71,8 @@ class LongScriptTests(unittest.TestCase):
         self.assertNotIn(style, agy.prompts[0])
         self.assertTrue(all(x.count(style) == 1 for x in agy.prompts[1:]))
         self.assertIn('Write scenes SC03–SC04 only (2 of 6)', agy.prompts[2])
+        from scripts.agy_pipeline import DETAIL_RULES
+        self.assertTrue(all(DETAIL_RULES in x for x in agy.prompts[1:]), 'chunks follow the same image/beat rules')
         self.assertIn('Events of SC01, SC02.', agy.prompts[2])  # running summary reaches later chunks
         self.assertIn(self.content['scenes'][1]['narration'], agy.prompts[2])  # last scenes for continuity
         self.assertEqual(wf.current(self.p, self.job, 'content')['stage'], 'content')
