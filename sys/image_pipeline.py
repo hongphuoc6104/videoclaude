@@ -276,7 +276,24 @@ def _plan_request(p, j, target, prompt, refs, registration, base_image):
                 'prompt': prompt, 'actual_prompt': actual_prompt, 'model': cfg['flow_model'], 'ratio': ratio,
                 'references': list(refs), 'edits': edits(p, j, edit_target), 'base_image': base_image,
                 'registration': identity_registration, 'config_hash': digest(p.root / 'config.json')}
+    retries = no_media_failures(p, j, target)
+    if retries:
+        identity['retry'] = retries  # only after a no-media failure, so first attempts keep their keys
     return cfg, ratio, actual_prompt, identity, hashobj(identity)
+
+
+NO_MEDIA_RETRIES = 1
+
+
+def no_media_failures(p, j, target):
+    """Earlier attempts at this target that Flow answered without an image (nothing generated, nothing to lose)."""
+    base = p.job(j) / 'flow/attempts'
+    return sum(1 for q in base.glob('*/request.json')
+               if read(q)['identity']['target'] == target and read(q)['state'] == 'failed_no_media') if base.exists() else 0
+
+
+def no_media(ex):
+    return getattr(ex, 'outcome', None) == 'no_media' or str(ex).startswith('FLOW_NO_MEDIA')
 
 
 def _unresolved_conflict(p, j, target):
@@ -310,6 +327,9 @@ def request(p, j, target, prompt, refs=(), registration=None, base_image=None):
     conflict = _unresolved_conflict(p, j, target)
     if conflict:
         raise Blocked('M2_AMBIGUOUS: reconcile request ' + conflict['key'] + ' before another submission')
+    if no_media_failures(p, j, target) > NO_MEDIA_RETRIES:
+        raise Blocked(f'FLOW_NO_MEDIA_REPEATED: Flow returned no image for {target} twice; '
+                      'likely a content filter: revise the image description (reject media --scene) before another try')
     folder = base / key
     record = folder / 'request.json'
     if record.exists():
@@ -393,7 +413,8 @@ def request(p, j, target, prompt, refs=(), registration=None, base_image=None):
         if result['state'] != 'downloaded':
             # Only a failure proven to precede submission is not an unknown outcome.
             sent = getattr(ex, 'generation_submitted', True) is not False
-            result.update(state='ambiguous' if sent else 'not_submitted', error=str(ex))
+            state = 'not_submitted' if not sent else 'failed_no_media' if no_media(ex) else 'ambiguous'
+            result.update(state=state, error=str(ex))
             write(record, result)
         raise Blocked('M2_FLOW: ' + str(ex)) from ex
 
@@ -427,8 +448,8 @@ def batch_submit(p, j, units, registrations, bases=None):
             base = (bases or {}).get(unit['based_on'])
             if base is None:
                 continue  # predecessor not downloaded yet: a later wave, or the single path, handles it
-        if _unresolved_conflict(p, j, unit['id']):
-            continue  # let request() raise M2_AMBIGUOUS as usual
+        if _unresolved_conflict(p, j, unit['id']) or no_media_failures(p, j, unit['id']) > NO_MEDIA_RETRIES:
+            continue  # let request() raise M2_AMBIGUOUS / FLOW_NO_MEDIA_REPEATED as usual
         linked = [registrations[x] for x in unit['character_ids']]
         _, plan_ratio, actual_prompt, identity, key = _plan_request(p, j, unit['id'], unit['prompt'], linked, None, base)
         if (p.job(j) / 'flow/attempts' / key / 'request.json').exists():
@@ -479,9 +500,10 @@ def batch_submit(p, j, units, registrations, bases=None):
         result = {'key': key, 'identity': identity, 'state': 'submitted', 'submitted_at': time.time(),
                   'args': job, 'journal': str(record.relative_to(p.job(j)))}
         if entry['status'] == 'failed':
-            result.update(state='ambiguous', error=entry.get('error', 'batch job failed'))
+            error = entry.get('error', 'batch job failed')
+            result.update(state='failed_no_media' if no_media(error) else 'ambiguous', error=error)
             write(record, result)
-            p.event(j, 'images', 'flow_batch_ambiguous', key)
+            p.event(j, 'images', 'flow_batch_' + result['state'], key)
             continue
         try:
             job_evidence_dir = batch_dir / '.evidence' / plan['job_id']

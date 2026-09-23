@@ -166,7 +166,10 @@ def generate_b2_image(
 
     item = generate_b2_batch([spec], timeout=timeout)[0]
     if item.get("failed"):
-        raise Blocked(item["failed"])  # sent to Flow, so the caller keeps it unknown
+        error = Blocked(item["failed"])  # sent to Flow: unknown, unless Flow answered with no image
+        if item["failed"].startswith("FLOW_NO_MEDIA"):
+            error.outcome = "no_media"
+        raise error
     return item
 
 

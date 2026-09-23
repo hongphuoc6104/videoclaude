@@ -60,7 +60,10 @@ async function executeQueue(specs,bound) {
  const state=()=>frame.evaluate(()=>JSON.parse(localStorage.getItem('VP_LAB_STATE_V2')||'{}'));
  // The tool keeps every result's base64 in localStorage (about 5 MB per origin); once full, a result is
  // generated but cannot be saved. Start from an empty tool state once everything in it is on disk.
- if(await frame.evaluate(()=>(localStorage.getItem('VP_LAB_STATE_V2')||'').length)>COMPACT_AT_CHARS)frame=await resetToolState(page,store);
+ // A latched tool (UNKNOWN after a failed item) is reset the same way: only when nothing in it is unsaved.
+ const before=await state();
+ if(await frame.evaluate(()=>(localStorage.getItem('VP_LAB_STATE_V2')||'').length)>COMPACT_AT_CHARS||before.status==='UNKNOWN')
+  frame=await resetToolState(page,store,{reason:before.status==='UNKNOWN'?'tool latched UNKNOWN':'localStorage near its limit'});
  const initial=await state();
  if(initial.status==='UNKNOWN'||initial.queue?.some(i=>!['COMPLETED','ACCEPTED'].includes(i.status)))throw Error('UNRESOLVED_FLOW_QUEUE');
  const ids=[];
@@ -107,7 +110,7 @@ async function executeQueue(specs,bound) {
    if(!item)failed.set(i,'QUEUE_DISAPPEARED_RECONCILE_NO_RESUBMIT');
    else if(item.mediaId&&item.result?.base64) {
     store.recordGenerated(attempts[i],{mediaId:item.mediaId,result:item.result,queueId:item.id,timestamps:item.timestamps});captured.add(i);
-   } else if(['UNKNOWN','FAILED'].includes(item.status))failed.set(i,`FLOW_ITEM_${item.status}_RECONCILE_NO_RESUBMIT: ${item.error||'no result'}`);
+   } else if(['UNKNOWN','FAILED'].includes(item.status))failed.set(i,noMedia(item)?`FLOW_NO_MEDIA: ${item.error}`:`FLOW_ITEM_${item.status}_RECONCILE_NO_RESUBMIT: ${item.error||'no result'}`);
   }
   if(captured.size+failed.size===ids.length)break;
   await new Promise(resolve=>setTimeout(resolve,500));
@@ -117,6 +120,10 @@ async function executeQueue(specs,bound) {
 }
 
 export const COMPACT_AT_CHARS=2500000;
+/** Flow answered and the tool recorded an error with no image and no media id: nothing was produced. */
+export function noMedia(item) {
+ return ['UNKNOWN','FAILED'].includes(item.status)&&!item.mediaId&&!item.result?.base64&&Boolean(item.error);
+}
 const TOOL_STATE_KEY='VP_LAB_STATE_V2';
 
 /** Last known state of every journaled request, by the tool's queue id. */
@@ -135,6 +142,7 @@ export function toolStateBlockers(queue,journal,release=[]) {
  return (queue||[]).filter(item=>{
   const known=journal.get(item.id);
   if(['collected','accepted'].includes(known))return false;
+  if(noMedia(item)&&['submitting','unknown'].includes(known))return false;  // finished with no output: nothing to lose
   return !(release.includes(item.id)&&['submitting','unknown'].includes(known));
  }).map(item=>item.id);
 }

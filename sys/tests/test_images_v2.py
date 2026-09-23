@@ -283,6 +283,34 @@ class ImagesV2Tests(unittest.TestCase):
         self.assertIn('not_submitted',states,'the unsent record is kept as history')
         self.assertNotIn('ambiguous',states)
 
+    @staticmethod
+    def _no_image():
+        error = Blocked('FLOW_NO_MEDIA: Expected object response with media fields')
+        error.outcome = 'no_media'
+        return error
+
+    def test_I08_no_image_answer_is_retried_once_with_a_new_key(self):
+        with patch('adapters.gflow', side_effect=self._no_image()):
+            with self.assertRaises(Blocked): self.p.run(self.j, 'images')
+        attempts = self.p.job(self.j) / 'flow/attempts'
+        first = read(next(attempts.glob('*/request.json')))
+        self.assertEqual(first['state'], 'failed_no_media')
+        self.run_stage()  # the normal provider answers the retry
+        mine = [read(q) for q in attempts.glob('*/request.json') if read(q)['identity']['target'] == first['identity']['target']]
+        self.assertEqual(sorted(r['state'] for r in mine), ['downloaded', 'failed_no_media'])
+        retry = next(r for r in mine if r['state'] == 'downloaded')
+        self.assertEqual(retry['identity']['retry'], 1)
+        self.assertNotEqual(retry['key'], first['key'], 'the failed record stays as history under its own key')
+
+    def test_I08_a_second_no_image_answer_stops_for_a_prompt_change(self):
+        for _ in range(2):
+            with patch('adapters.gflow', side_effect=self._no_image()) as call:
+                with self.assertRaises(Blocked): self.p.run(self.j, 'images')
+                self.assertEqual(call.call_count, 1)
+        with patch('adapters.gflow', side_effect=self._no_image()) as call:
+            with self.assertRaisesRegex(Blocked, 'FLOW_NO_MEDIA_REPEATED'): self.p.run(self.j, 'images')
+            self.assertEqual(call.call_count, 0)
+
     def test_I08_reconcile_verified_download(self):
         def lost_after_download(p,*args,**kw):
             self.provider(p,*args,**kw)

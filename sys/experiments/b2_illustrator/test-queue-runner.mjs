@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {prepareRequests,journalByQueueId,toolStateBlockers} from './queue-runner.mjs';
+import {prepareRequests,journalByQueueId,toolStateBlockers,noMedia} from './queue-runner.mjs';
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'vp-queue-'));
 const file=path.join(dir,'ref.png');fs.writeFileSync(file,'reference');
 const request={testCase:'scene-1',prompt:'Borrow a book',ratio:'9:16',outDir:dir,characterRefPath:file,charMediaId:'mascot-id'};
@@ -47,4 +47,15 @@ test('tool state may be dropped only when every item is on disk or explicitly re
  assert.deepEqual(toolStateBlockers(queue,known,['REQ-B','REQ-C','REQ-X']),['REQ-C','REQ-X'],
   'release covers only sent-and-never-collected items; a generated result must be collected first');
  assert.deepEqual(toolStateBlockers([{id:'REQ-A'}],known),[]);
+});
+
+test('an item Flow answered without an image is a no-media failure and may leave the tool state',()=>{
+ const empty={id:'REQ-N',status:'UNKNOWN',error:'Expected object response with media fields'};
+ assert.equal(noMedia(empty),true);
+ assert.equal(noMedia({...empty,result:{base64:'abc'}}),false,'a result exists: it must be collected, not dropped');
+ assert.equal(noMedia({...empty,mediaId:'m'}),false);
+ assert.equal(noMedia({id:'REQ-P',status:'PROCESSING'}),false,'still running');
+ assert.equal(noMedia({id:'REQ-U',status:'UNKNOWN'}),false,'no error recorded: outcome unknown');
+ const known=new Map([['REQ-N','unknown'],['REQ-P','submitting']]);
+ assert.deepEqual(toolStateBlockers([empty,{id:'REQ-P',status:'PROCESSING'}],known),['REQ-P']);
 });
