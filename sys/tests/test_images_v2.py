@@ -271,6 +271,18 @@ class ImagesV2Tests(unittest.TestCase):
         with self.assertRaises(Blocked):
             ip.flow_action(self.p,SimpleNamespace(job=self.j,command='flow-reconcile',request=r['key'],asset=None,note='TEST',evidence=None))
 
+    def test_I08_missing_session_is_not_an_unknown_outcome(self):
+        import b2_bridge
+        with patch('adapters.gflow',side_effect=b2_bridge.not_submitted('session socket not found')) as call:
+            with self.assertRaises(Blocked):self.p.run(self.j,'images')
+            self.assertEqual(call.call_count,1)
+        attempts=self.p.job(self.j)/'flow/attempts'
+        self.assertEqual(read(next(attempts.glob('*/request.json')))['state'],'not_submitted')
+        self.p.run(self.j,'images')  # submits again through the normal provider
+        states=[read(q)['state'] for q in attempts.glob('*/request.json')]
+        self.assertIn('not_submitted',states,'the unsent record is kept as history')
+        self.assertNotIn('ambiguous',states)
+
     def test_I08_reconcile_verified_download(self):
         def lost_after_download(p,*args,**kw):
             self.provider(p,*args,**kw)

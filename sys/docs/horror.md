@@ -1,6 +1,6 @@
 # Kênh truyện kinh dị
 
-Video kể truyện ma / kinh dị tiếng Việt dài 10–30 phút. Mỗi video kể một **hạt giống** trong `horror/seeds.json`: mô-típ có nguồn gốc rõ ràng, không phải lời kể. Lời kể, tên người và bối cảnh luôn viết mới và hư cấu.
+Video kể truyện ma / kinh dị tiếng Việt dài 10–30 phút (có mức thử 4–6 phút, 10 cảnh). Mỗi video kể một **hạt giống** trong `horror/seeds.json`: mô-típ có nguồn gốc rõ ràng, không phải lời kể. Lời kể, tên người và bối cảnh luôn viết mới và hư cấu. Lời dẫn không nói "đây là truyện hư cấu"; câu đó thuộc mô tả video khi đăng (chưa có bước tự sinh mô tả). Lời dẫn vẫn không bao giờ khẳng định hay gợi ý truyện có thật.
 
 ## Bắt đầu một video
 

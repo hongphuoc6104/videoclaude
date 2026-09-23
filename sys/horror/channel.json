@@ -138,8 +138,7 @@
   "domain_requirements": [
     "Mọi tên người và địa danh trong truyện đều hư cấu; bối cảnh tả chung (một làng ven sông, một dãy trọ cuối hẻm), không dùng tên tỉnh, thành phố hay địa điểm có thật",
     "Người dẫn chuyện là nhân vật đại diện kênh (người que áo xanh biển nhạt #8CCFE8), chỉ xuất hiện ở cảnh mở đầu và cảnh kết; các cảnh trong truyện dùng nhân vật riêng của truyện, không vẽ người que",
-    "Sợ bằng không khí: bóng tối, âm thanh được kể lại, chi tiết sai lệch nhỏ; không cảnh máu hay xác",
-    "Cảnh mở đầu nói rõ đây là truyện hư cấu; cảnh kết nhắc lại điều đó"
+    "Sợ bằng không khí: bóng tối, âm thanh được kể lại, chi tiết sai lệch nhỏ; không cảnh máu hay xác"
   ],
   "host": {
     "id": "channel-mascot",

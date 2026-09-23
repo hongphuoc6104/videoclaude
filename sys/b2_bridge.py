@@ -24,9 +24,16 @@ def is_session_available() -> bool:
         return False
 
 
+def not_submitted(message: str) -> Blocked:
+    """A failure before any command reached the session, so nothing was sent to Flow and the caller may submit again."""
+    error = Blocked(message)
+    error.generation_submitted = False
+    return error
+
+
 def send_raw_command(command: str, timeout: float = 120.0) -> dict:
     if not SOCKET_PATH.exists():
-        raise Blocked(
+        raise not_submitted(
             f"B-2 Illustrator session socket not found at {SOCKET_PATH}. "
             "Ensure b2-session service is running (e.g. systemctl --user start b2-session.service)."
         )
@@ -34,6 +41,10 @@ def send_raw_command(command: str, timeout: float = 120.0) -> dict:
     client.settimeout(timeout)
     try:
         client.connect(str(SOCKET_PATH))
+    except OSError as exc:
+        client.close()
+        raise not_submitted(f"B-2 Illustrator session socket refused the connection: {exc}")
+    try:
         payload = (command.strip() + "\n").encode("utf-8")
         client.sendall(payload)
         
@@ -68,7 +79,7 @@ def ensure_connected() -> dict:
         return status
     result = send_raw_command("connect", timeout=75.0)
     if result.get("status") != "connected":
-        raise Blocked(f"B-2 connection blocked: {result.get('reason', 'not connected')}")
+        raise not_submitted(f"B-2 connection blocked: {result.get('reason', 'not connected')}")
     return result
 
 

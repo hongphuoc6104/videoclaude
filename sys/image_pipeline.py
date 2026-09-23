@@ -317,7 +317,10 @@ def request(p, j, target, prompt, refs=(), registration=None, base_image=None):
         if result['state'] == 'downloaded':
             image_check(p, j, result['path'], result['sha256'], full=registration is None)
             return result
-        raise Blocked('M2_ATTEMPT: request needs explicit reconciliation')
+        if result['state'] != 'not_submitted':
+            raise Blocked('M2_ATTEMPT: request needs explicit reconciliation')
+        # Proven never sent (no session or connection): keep the record aside as history and submit again.
+        folder.rename(base / f'{key}.not-submitted-{int(time.time())}')
     evidence = preflight(p, j, 'character-register' if registration else 'image')
     folder.mkdir(exist_ok=True)
     write(folder / 'preflight.json', evidence)
@@ -388,7 +391,9 @@ def request(p, j, target, prompt, refs=(), registration=None, base_image=None):
     except Exception as ex:
         # A known downloaded but invalid image is not an unknown submission.
         if result['state'] != 'downloaded':
-            result.update(state='ambiguous', error=str(ex))
+            # Only a failure proven to precede submission is not an unknown outcome.
+            sent = getattr(ex, 'generation_submitted', True) is not False
+            result.update(state='ambiguous' if sent else 'not_submitted', error=str(ex))
             write(record, result)
         raise Blocked('M2_FLOW: ' + str(ex)) from ex
 

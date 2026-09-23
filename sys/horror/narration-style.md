@@ -42,12 +42,12 @@ The narration is heard, not read, in one deep male Vietnamese TTS voice at a slo
 
 | Part | Share | What happens |
 |---|---|---|
-| Opening (host) | scene 1 | First sentence is a concrete strange image or question, never a greeting. Then say clearly the story is fiction. Then hand over. |
+| Opening (host) | scene 1 | First sentence is a concrete strange image or question, never a greeting. Then hand over. Do not say the story is fiction: the video description carries that notice. Never claim or hint that it really happened. |
 | Setup | ~20% | Ordinary life. The protagonist wants something (money, rest, family). The place. A first small oddity by the end. |
 | Escalation | ~45% | The seed's omens, each stronger. One false relief. |
 | Climax and twist | ~20% | Short, direct scenes. The twist reframes a planted detail. |
 | Aftermath | ~10% | Consequences and one lingering detail. No over-explaining. |
-| Closing (host) | last scene | Close the story, repeat that it is fiction, invite comments. Never dare the listener to try anything. |
+| Closing (host) | last scene | Close the story and invite comments, without explaining the mystery away or calling it fiction. Never dare the listener to try anything. |
 
 ## Mood (`Không khí (mood)` in the brief)
 
