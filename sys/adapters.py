@@ -188,7 +188,8 @@ def gflow(p,*args,timeout=960):
    ref = character_reference(p, names, job.get('character_refs', [])) if names else None
    return b2_bridge.queue_spec(job['id'], job['prompt'], job.get('ratio', '9:16'), batch_out / job['id'],
                                char_ref_path=ref and ref['path'], char_media_id=ref and ref['media_id'],
-                               canonical=bool(ref and ref['canonical']), no_character=ref is None)
+                               canonical=bool(ref and ref['canonical']), no_character=ref is None,
+                               base_ref_path=job.get('base_image'), base_media_id=job.get('base_media_id'))
   for offset in range(0, len(jobs), 4):
    group = jobs[offset:offset+4]
    specs = [spec(job) for job in group]
@@ -209,7 +210,8 @@ def gflow(p,*args,timeout=960):
      ev = batch_out / '.evidence' / job['id']; ev.mkdir(parents=True, exist_ok=True)
      if result.get('before_submit'): shutil.copy(result['before_submit'], ev / 'before-submit.png')
      write(ev / 'ui-proof.json', {'passed':True, 'mode':'image', 'characters':chars,
-           'tool':'b2-illustrator', 'forgeId':result['media_id'], 'screenshot':result['screenshot']})
+           'tool':'b2-illustrator', 'forgeId':result['media_id'], 'screenshot':result['screenshot'],
+           **({'base_image':job['base_image']} if job.get('base_image') else {})})
      entry.update(status='completed', artifacts=[str(dst)])
      entry.pop('error', None)
      write(state_file, {'jobs':run_jobs})

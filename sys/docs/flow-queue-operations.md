@@ -22,7 +22,9 @@ Giữ dịch vụ Persistent Session đang chạy; kiểm tra `node experiments/
 
 `queue-runner.mjs` điều khiển biểu mẫu tuần tự để chụp từng đầu vào riêng, sau đó Start Queue cho tối đa bốn yêu cầu. Mỗi yêu cầu sinh một ảnh. Ba ảnh dùng hai workers vì UI hiện không có mức ba. Đây không phải native x4 hoặc cam kết tăng tốc bốn lần.
 
-`b2_bridge.generate_b2_batch` và adapter batch đã nối hàng đợi. Chỉ ảnh độc lập được đưa vào batch; based_on vẫn đi theo đường đơn và cần base media ID thật. Metadata forgeId đi theo ảnh để truy lại tham chiếu. Không coi hoàn tất kỹ thuật là đã duyệt ảnh cha.
+`b2_bridge.generate_b2_batch` và adapter batch đã nối hàng đợi. Ảnh được gửi theo đợt phụ thuộc: đợt 0 gồm mọi ảnh không based_on, đợt n gồm các biến thể có ảnh gốc ở đợt n-1. Mỗi đợt đóng gói tối đa 4 yêu cầu một lần Start Queue; biến thể mang file ảnh gốc và base media ID thật (forgeId trong sidecar), UI proof phải ghi đúng ảnh gốc. Không coi hoàn tất kỹ thuật là đã duyệt ảnh cha.
+
+Một phiên chỉ điều khiển một tab và chạy từng lệnh một, nên pipeline không mở nhiều luồng Python vào cùng phiên (trước đây 3 luồng tranh nhau, lệnh status 5 giây hết giờ sau lệnh tạo ảnh dài). Song song thật là 4 worker của tool. Lệnh `status` được session trả lời ngay, không xếp sau lệnh tạo ảnh. Mọi lỗi ở bước kiểm tra phiên/kết nối (trước khi gửi hàng đợi) được ghi `not_submitted` và lần chạy sau gửi lại; lỗi sau khi đã gửi vẫn là ambiguous.
 
 **Mặc định bật thử nghiệm trên PC theo yêu cầu người dùng:** config.json đặt flow_batch=true và flow_queue_trial_enabled=true. Pipeline gom tối đa 4 ảnh độc lập mỗi nhóm. Bridge cho phép chạy theo ngoại lệ thử nghiệm này; acceptance.json vẫn production_ready=false vì chưa nghiệm thu đầy đủ. Không sửa hồ sơ nghiệm thu thành đạt. Còn phải nghiệm thu chuỗi phụ thuộc/đăng ký mascot, chữ hiển thị, lỗi thực tế và so sánh chất lượng ba lượt. Không tạo screenshot giả. Với flow_require_ui_evidence=false, thiếu screenshot trước gửi không chặn; bản mascot local không chứng minh đã đăng ký trên Flow. Vẫn cần nghiệm thu hợp đồng tham chiếu và chất lượng toàn pipeline.
 
@@ -53,7 +55,7 @@ Bằng chứng local: `sys/maintenance/production-sync-20260922/queue-live/`. Ki
 2. Mở link share ở trên bằng profile PC đã xác minh; dùng bản queue mới hoặc remix vào project PC. Cập nhật tool_url trong machine.local.json theo URL tool thực tế; pull Git không thay bản Flow cũ.
 3. Kiểm tra status dịch vụ. Nếu đang có tác vụ, chờ đối chiếu xong trước khi khởi động phiên mới để nạp queue-runner mới. Không xóa nhật ký hay đổi profile để né lỗi.
 4. Tạo job thử mới qua kho vocab; không sửa integrity baseline của job cũ. Chạy theo content → media → video, giữ các mốc duyệt. Bật batch không tự duyệt content/media/video hay bỏ kiểm tra chi phí.
-5. Ảnh độc lập chạy tối đa 4 cùng lúc; based_on vẫn chạy theo phụ thuộc. Những lỗi chữ/đăng ký mascot/thiếu media ID hoặc bằng chứng thật còn lại phải sửa và báo rõ, không giả bằng chứng để vượt.
+5. Mỗi đợt chạy tối đa 4 ảnh cùng lúc; biến thể based_on chạy ở đợt sau ảnh gốc. Những lỗi chữ/đăng ký mascot/thiếu media ID hoặc bằng chứng thật còn lại phải sửa và báo rõ, không giả bằng chứng để vượt.
 6. Tắt thử nghiệm: đặt flow_batch=false và flow_queue_trial_enabled=false. Giữ toàn bộ nhật ký để đối chiếu.
 
 Đây là cho phép thử tích hợp trên PC, không phải xác nhận đã nghiệm thu hoặc cho phép chi tiêu sản xuất không giới hạn.

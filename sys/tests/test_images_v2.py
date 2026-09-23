@@ -415,9 +415,10 @@ class ImagesV2Tests(unittest.TestCase):
                           'every 9:16 image must submit before any 16:9 image')
 
         prompts_seen = [a[a.index('--prompt') + 1] for a in self.calls]
-        expected_scene_order = ['SC01 image 1', 'SC01 image 2', 'SC02 image 1', 'SC02 image 2'] * 2
+        # Waves: every first image of the ratio, then every variation of those.
+        expected_scene_order = ['SC01 image 1', 'SC02 image 1', 'SC01 image 2', 'SC02 image 2'] * 2
         self.assertEqual([p.rsplit('Scene prompt: ', 1)[-1] for p in prompts_seen], expected_scene_order,
-                          'a based_on chain inside one scene must stay in order within each ratio')
+                          'a based_on variation must follow its predecessor within each ratio')
 
         base_image_calls = [a for a in self.calls if '--base-image' in a]
         self.assertEqual(len(base_image_calls), 4, 'the four chained variations must attach their predecessor')
@@ -444,6 +445,75 @@ class ImagesV2Tests(unittest.TestCase):
         self.assertNotIn('flow_batch', cfg)
         self.finish()
         self.assertTrue(all(a[0] != 'batch' for a in self.calls))
+
+    def test_flow_batch_sends_variations_in_a_second_wave(self):
+        # Two scenes, each an image and a variation based on it. With flow_batch
+        # on, the first wave batches both first images; the second wave batches
+        # both variations, each carrying its predecessor file and Flow media id.
+        # Nothing falls through to the one-image path.
+        from pilot import read as real_read
+        units = [
+            {'id': 'SC01_I1', 'scene_id': 'SC01', 'ratio': '9:16', 'based_on': None,
+             'prompt': 'SC01 image 1', 'character_ids': [], 'visible_text': []},
+            {'id': 'SC01_I2', 'scene_id': 'SC01', 'ratio': '9:16', 'based_on': 'SC01_I1',
+             'prompt': 'SC01 image 2', 'character_ids': [], 'visible_text': []},
+            {'id': 'SC02_I1', 'scene_id': 'SC02', 'ratio': '9:16', 'based_on': None,
+             'prompt': 'SC02 image 1', 'character_ids': [], 'visible_text': []},
+            {'id': 'SC02_I2', 'scene_id': 'SC02', 'ratio': '9:16', 'based_on': 'SC02_I1',
+             'prompt': 'SC02 image 2', 'character_ids': [], 'visible_text': []},
+        ]
+        synthetic_content = {'schema_version': '2.0', 'characters': [], 'scenes': [{'id': 'SC01'}, {'id': 'SC02'}]}
+        real_brief, real_rev, real_hash = self.p.brief(self.j)
+        dual_brief = (dict(real_brief, aspect_ratio='dual', scene_count=2), real_rev, real_hash)
+
+        def read_with_batch_flag(path):
+            d = real_read(path)
+            if isinstance(d, dict) and str(path).endswith('config.json') and 'flow_model' in d:
+                d = dict(d, flow_batch=True)
+            return d
+
+        waves = []
+        def fake_batch_gflow(p, *args, **kw):
+            self.assertEqual(args[0], 'batch', 'no image may take the one-image path')
+            out_dir = Path(args[args.index('--out') + 1])
+            jobs = read(Path(args[1]))['jobs']
+            waves.append(jobs)
+            records = []
+            for job in jobs:
+                evidence_dir = out_dir / '.evidence' / job['id']; evidence_dir.mkdir(parents=True, exist_ok=True)
+                proof = {'passed': True, 'mode': 'image', 'characters': []}
+                if job.get('base_image'):
+                    proof['base_image'] = job['base_image']
+                write(evidence_dir / 'ui-proof.json', proof)
+                Image.new('RGB', (30, 30)).save(evidence_dir / 'before-submit.png')
+                asset = out_dir / (job['id'] + '-1.png')
+                Image.new('RGB', (720, 1280)).save(asset)
+                write(asset.with_suffix('.json'), {'jobId': job['id'], 'type': 'image', 'prompt': job['prompt'],
+                      'ratio': job['ratio'], 'characters': [], 'source': 'google-flow-browser',
+                      'status': 'downloaded', 'forgeId': 'MEDIA-' + job['id']})
+                records.append({'id': job['id'], 'type': 'image', 'status': 'completed', 'artifacts': [str(asset)]})
+            write(out_dir / 'gflow-run.json', {'source': 'google-flow-browser', 'jobs': records})
+            return SimpleNamespace(returncode=0, stdout='BATCH TEST', stderr='')
+
+        with patch('image_pipeline.content', return_value=synthetic_content), \
+             patch('image_pipeline.planned_units', return_value=units), \
+             patch.object(self.p, 'brief', return_value=dual_brief), \
+             patch('image_pipeline.read', side_effect=read_with_batch_flag), \
+             patch('adapters.gflow', side_effect=fake_batch_gflow):
+            self.p.run(self.j, 'images')
+            self.approve('references')
+            out_dir = self.p.job(self.j) / 'manual-wave-out'; out_dir.mkdir()
+            ip.produce(self.p, self.j, out_dir)
+
+        self.assertEqual([[x['prompt'].rsplit('Scene prompt: ', 1)[-1] for x in w] for w in waves],
+                         [['SC01 image 1', 'SC02 image 1'], ['SC01 image 2', 'SC02 image 2']])
+        self.assertTrue(all('base_image' not in x for x in waves[0]))
+        for job, scene in zip(waves[1], ['SC01_I1', 'SC02_I1']):
+            first = self._journal_for(scene)
+            self.assertEqual(job['base_image'], str(self.p.job(self.j) / first['path']))
+            self.assertEqual(job['base_media_id'], 'MEDIA-' + waves[0][['SC01_I1', 'SC02_I1'].index(scene)]['id'])
+        for scene in ['SC01_I1', 'SC01_I2', 'SC02_I1', 'SC02_I2']:
+            self.assertEqual(self._journal_for(scene)['state'], 'downloaded')
 
     def test_flow_batch_path_isolates_a_failed_job(self):
         # gflow batch is gated behind config flow_batch (default off; this

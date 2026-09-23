@@ -171,5 +171,33 @@ class PipelineReferenceArgsTests(unittest.TestCase):
         self.assertNotIn('--media-id', regs[0])
 
 
+
+class SessionCheckTests(unittest.TestCase):
+    """Anything that fails before a queue command is sent cannot have reached Flow."""
+
+    def test_session_check_failures_are_not_submitted(self):
+        failures = [Blocked('B-2 Illustrator session command timed out after 5.0s: status'),
+                    b2_bridge.not_submitted('socket not found')]
+        for error in failures:
+            with self.subTest(error=str(error)), patch('b2_bridge.send_raw_command', side_effect=error):
+                with self.assertRaises(Blocked) as ctx:
+                    b2_bridge.ensure_connected()
+                self.assertIs(ctx.exception.generation_submitted, False)
+
+    def test_refused_connect_is_not_submitted(self):
+        replies = iter([{'status': 'disconnected'}, {'status': 'blocked', 'reason': 'NO_CHROME_CONTEXT'}])
+        with patch('b2_bridge.send_raw_command', side_effect=lambda *a, **k: next(replies)):
+            with self.assertRaises(Blocked) as ctx:
+                b2_bridge.ensure_connected()
+        self.assertIs(ctx.exception.generation_submitted, False)
+
+    def test_a_timeout_during_a_queue_command_stays_unknown(self):
+        with patch('b2_bridge.require_queue_acceptance'), patch('b2_bridge.ensure_connected'), \
+             patch('b2_bridge.send_raw_command', side_effect=Blocked('timed out after 240s: tool-snapshot:queue')):
+            with self.assertRaises(Blocked) as ctx:
+                b2_bridge.generate_b2_batch([{'testCase': 'x'}])
+        self.assertIsNot(getattr(ctx.exception, 'generation_submitted', True), False)
+
+
 if __name__ == '__main__':
     unittest.main()

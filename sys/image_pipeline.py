@@ -398,19 +398,18 @@ def request(p, j, target, prompt, refs=(), registration=None, base_image=None):
         raise Blocked('M2_FLOW: ' + str(ex)) from ex
 
 
-def batch_submit(p, j, units, registrations):
-    """Optional bulk path: one `gflow batch` call pre-populates journals for a
-    ratio group's independent images, so the normal request() calls that
-    follow just hit the cache. Gated by config flow_batch (default off, read
-    via cfg.get('flow_batch', False)) -- see produce(). Never called for the
+def batch_submit(p, j, units, registrations, bases=None):
+    """Optional bulk path: one `gflow batch` call pre-populates journals for
+    one wave of a ratio group, so the normal request() calls that follow just
+    hit the cache. Gated by config flow_batch (default off, read via
+    cfg.get('flow_batch', False)) -- see produce(). Never called for the
     references stage.
 
-    Scope is deliberately narrow: only images with based_on absent (no
-    variation chain) are ever offered to the batch. A chained variation
-    needs its predecessor's file physically attached and UI-verified as an
-    upload before submission; the single-image request() path already does
-    that carefully, and this pre-pass does not attempt to reproduce it, so
-    chains always fall through to request() individually.
+    A chained variation (based_on) joins a wave only once its predecessor is
+    downloaded: bases maps unit id -> {'target','path','sha256'} exactly as
+    request() receives it, so the journal key matches the single path. The
+    predecessor file and its Flow media id are attached per request, and the
+    UI proof must name that same base image.
 
     Failure handling mirrors the single-image path exactly: a job that
     completes but fails verification, or that gflow reports failed, becomes
@@ -423,16 +422,19 @@ def batch_submit(p, j, units, registrations):
     cfg = read(p.root / 'config.json')
     plans = []
     for unit in units:
+        base = None
         if unit.get('based_on'):
-            continue  # variation chains always use the single-image path
+            base = (bases or {}).get(unit['based_on'])
+            if base is None:
+                continue  # predecessor not downloaded yet: a later wave, or the single path, handles it
         if _unresolved_conflict(p, j, unit['id']):
             continue  # let request() raise M2_AMBIGUOUS as usual
         linked = [registrations[x] for x in unit['character_ids']]
-        _, plan_ratio, actual_prompt, identity, key = _plan_request(p, j, unit['id'], unit['prompt'], linked, None, None)
+        _, plan_ratio, actual_prompt, identity, key = _plan_request(p, j, unit['id'], unit['prompt'], linked, None, base)
         if (p.job(j) / 'flow/attempts' / key / 'request.json').exists():
             continue  # already resolved (e.g. downloaded on a prior run)
         plans.append({'unit': unit, 'ratio': plan_ratio, 'actual_prompt': actual_prompt,
-                      'identity': identity, 'key': key, 'linked': linked})
+                      'identity': identity, 'key': key, 'linked': linked, 'base': base})
     if not plans:
         return
     evidence = preflight(p, j, 'image')  # one preflight for the whole batch
@@ -449,7 +451,8 @@ def batch_submit(p, j, units, registrations):
         jobs.append({'id': plan['key'][:16], 'type': 'image', 'project': cfg['flow_project'],
                      'prompt': plan['actual_prompt'], 'model': model_arg, 'ratio': plan['ratio'],
                      'outputs': 1, 'character': [x['name'] for x in plan['linked']],
-                     'character_refs': reference_files(p, j, plan['linked']), 'out': str(batch_dir)})
+                     'character_refs': reference_files(p, j, plan['linked']), 'out': str(batch_dir),
+                     **(base_fields(p, j, plan['base']) if plan['base'] else {})})
         plan['folder'], plan['job_id'] = folder, plan['key'][:16]
     jobs_by_id = {job['id']: (job, plan) for job, plan in zip(jobs, plans)}
     jobs_file = batch_dir / 'jobs.json'
@@ -491,6 +494,8 @@ def batch_submit(p, j, units, registrations):
                 raise Blocked('Flow UI attachment/mode evidence missing')
             if proof.get('mode') != 'image':
                 raise Blocked('Flow UI mode evidence differs')
+            if plan['base'] and proof.get('base_image') != str(p.path(j, plan['base']['path'])):
+                raise Blocked('M2_BASE_IMAGE: UI attachment evidence missing')
             if requires_ui_evidence(p):
                 with Image.open(before_submit_path) as im: im.verify()
             image_files = [Path(a) for a in entry.get('artifacts', []) if Path(a).suffix.lower() in ('.png', '.jpg', '.jpeg')]
@@ -517,6 +522,13 @@ def batch_submit(p, j, units, registrations):
             result.update(state='ambiguous', error=str(ex))
             write(record, result)
             p.event(j, 'images', 'flow_batch_ambiguous', key)
+
+
+def base_fields(p, j, base):
+    """The predecessor image of a variation and its Flow media id, from the sidecar written when it was downloaded."""
+    path = p.path(j, base['path'])
+    side = path.with_suffix('.json')
+    return {'base_image': str(path), 'base_media_id': read(side).get('forgeId') if side.is_file() else None}
 
 
 def canonical_ids(p):
@@ -624,9 +636,7 @@ def produce(p, j, out):
             except Blocked as ex:
                 _reraise_if_expired(ex, i, len(refs))
         scenes = planned_units(p,j)
-        import concurrent.futures
         cfg = read(p.root / 'config.json')
-        concurrency = cfg.get('concurrency', 3)
 
         completed = {}
         def process_scene(scene):
@@ -636,46 +646,38 @@ def produce(p, j, out):
             completed[scene['id']] = {'target':scene['id'],'path':r['path'],'sha256':r['sha256']}
             return (scene['id'], scene['prompt'], linked, r)
 
-        # Flow's aspect-ratio/model/output toggles are one global UI setting;
-        # flipping it per image is wasteful and unsafe under parallel workers.
-        # Finish every image of one ratio before starting the next. Scenes
-        # within a ratio still run in parallel; variations inside one scene
-        # stay sequential because based_on chains to the immediately preceding
-        # image of that same scene, and planned_units keeps the ratio suffix
-        # aligned so a chain never crosses ratios.
-        ratio_order, ratio_groups = [], {}
+        # One Flow session drives one browser tab and runs one command at a
+        # time, so client threads only queue behind each other. Parallelism
+        # lives in the tool's own queue (up to four workers per Start Queue),
+        # which batch_submit fills. Images are therefore sent in waves: wave 0
+        # holds every image without based_on, wave n every variation whose
+        # predecessor is in wave n-1. Each wave is batched, then request()
+        # walks it in order: cache hits for batched images, the single path
+        # for anything the batch did not cover. Flow's aspect-ratio toggle is
+        # one global UI setting, so a whole ratio finishes before the next.
+        ratio_order, ratio_units = [], {}
         for unit in scenes:
             rk = unit.get('ratio')
-            if rk not in ratio_groups:
-                ratio_groups[rk] = {}
+            if rk not in ratio_units:
+                ratio_units[rk] = []
                 ratio_order.append(rk)
-            ratio_groups[rk].setdefault(unit.get('scene_id',unit['id']), []).append(unit)
-
-        def process_group(group):
-            return [(unit, process_scene(unit)) for unit in group]
-
-        # Optional bulk path (default off; see batch_submit's docstring). Pre-
-        # populates journals for each ratio's independent images with a single
-        # gflow batch call; the per-scene loop below is unchanged either way
-        # and simply hits the cache for anything the batch already resolved.
-        if cfg.get('flow_batch', False):
-            for rk in ratio_order:
-                units_in_ratio = [u for group in ratio_groups[rk].values() for u in group]
-                batch_submit(p, j, units_in_ratio, registrations)
+            ratio_units[rk].append(unit)
 
         outcomes = {}
         try:
             for rk in ratio_order:
-                with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as executor:
-                    for results in executor.map(process_group, ratio_groups[rk].values()):
-                        for unit, outcome in results:
-                            outcomes[unit['id']] = outcome
+                level = {}
+                for unit in ratio_units[rk]:
+                    level[unit['id']] = level[unit['based_on']] + 1 if unit.get('based_on') in level else 0
+                for depth in range(max(level.values()) + 1):
+                    wave = [u for u in ratio_units[rk] if level[u['id']] == depth]
+                    if cfg.get('flow_batch', False):
+                        batch_submit(p, j, wave, registrations, bases=completed)
+                    for unit in wave:
+                        outcomes[unit['id']] = process_scene(unit)
         except Blocked as ex:
-            # Any request() already in flight when the window lapsed finishes
-            # to a determinate state (downloaded/ambiguous) before this is
-            # raised -- ThreadPoolExecutor's context manager waits for every
-            # submitted unit, it just never starts a new one. Nothing here
-            # resubmits; only the message is enriched with progress.
+            # Waves run in order and nothing here resubmits; only the message
+            # is enriched with progress when the window lapsed.
             _reraise_if_expired(ex, len(outcomes), len(scenes))
 
         # Re-assemble in the original planned order (scene-major, ratio-minor)

@@ -55,11 +55,12 @@ async function serve(){
       if(!data.includes('\n'))return;
       client.removeAllListeners('data');
       const command=data.trim();
+      // status only reads session state: answer at once instead of queueing behind a long generation.
+      if(command==='status'){client.end(JSON.stringify(session.status())+'\n');return;}
       queue=queue.then(async()=>{
         try {
           let result;
-          if(command==='status') result=session.status();
-          else if(command==='connect') {
+          if(command==='connect') {
             result=await session.start();
             await ensureBoundPage();
             if(bound?.page && !bound.page.url().startsWith(toolUrl)) {

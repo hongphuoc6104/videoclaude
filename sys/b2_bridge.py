@@ -74,10 +74,16 @@ def query_status() -> dict:
 
 
 def ensure_connected() -> dict:
-    status = query_status()
-    if status.get("status") == "connected":
-        return status
-    result = send_raw_command("connect", timeout=75.0)
+    """Runs before every submission, so any failure here means nothing was sent to Flow."""
+    try:
+        status = query_status()
+        if status.get("status") == "connected":
+            return status
+        result = send_raw_command("connect", timeout=75.0)
+    except Blocked as ex:
+        if getattr(ex, "generation_submitted", True) is False:
+            raise
+        raise not_submitted(f"B-2 session check failed before submission: {ex}") from ex
     if result.get("status") != "connected":
         raise not_submitted(f"B-2 connection blocked: {result.get('reason', 'not connected')}")
     return result
