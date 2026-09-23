@@ -44,6 +44,14 @@ def split_at(w,sr,texts):
  pieces.append(w[prev:])
  return pieces if all(p.size>int(.15*sr) for p in pieces) else None
 
+def voiced_samples(w,sr,thresh_db=-40.,win_s=0.01):
+ """Samples up to the end of the last audible window: the speech inside a chunk
+ that also carries its following pause."""
+ win=max(1,int(win_s*sr));n=w.size//win
+ if n==0:return int(w.size)
+ loud=np.nonzero(np.abs(w[:n*win]).reshape(n,win).mean(1)>10**(thresh_db/20))[0]
+ return int(min(w.size,(loud[-1]+1)*win)) if loud.size else 0
+
 def cache_key(text,settings,package_version,sample_rate,cache_version=CACHE_VERSION):
  """Content-addressed cache name: text + every setting that changes the audio +
  the installed model package version. Mirrors scripts/en_worker.py's cache_key,
@@ -137,13 +145,14 @@ def run(source,out):
  package_version=version('vieneu')
  speed=float(cfg.get('tts_speed',1.0))
 
- def cached(text,retake):
+ def cached(text,retake,spd=None):
   """Cache file for text under the ACTIVE engine. backend/precision are part of
   the key: GPU and CPU takes differ, and a mid-run fallback must not mislabel
-  audio. Batch size is not -- it only groups work, the take stays equivalent."""
+  audio. Batch size is not -- it only groups work, the take stays equivalent.
+  spd is a directed per-line speed (see scripts/delivery.py); None = tts_speed."""
   e=st['engine']
   key_settings=dict(voice=str(st['voice']),temperature=cfg['tts_temperature'],top_p=cfg['tts_top_p'],
-                    backend=e['backend'],precision=e['precision'],mode='v3turbo',speed=speed,retake=retake)
+                    backend=e['backend'],precision=e['precision'],mode='v3turbo',speed=speed if spd is None else spd,retake=retake)
   return raw/(cache_key(text,key_settings,package_version,st['sr'])+'.wav')
 
  def generate(texts):
@@ -165,35 +174,39 @@ def run(source,out):
     use(*load_engine(dict(cfg,tts_device='cpu')))
 
  def prefetch(items):
-  """Synthesize every (text, retake) not yet cached in one batched call, so the
-  GPU sees many scenes at once instead of one scene per forward."""
+  """Synthesize every (text, retake[, speed]) not yet cached in one batched call,
+  so the GPU sees many scenes at once instead of one scene per forward."""
   todo=[];seen=set()
-  for text,retake in items:
-   f=cached(text,retake)
-   if (text,retake) in seen or (f.exists() and f.stat().st_size>1000):continue
-   seen.add((text,retake));todo.append((text,retake))
+  for item in items:
+   text,retake,spd=(tuple(item)+(None,))[:3]
+   f=cached(text,retake,spd)
+   if (text,retake,spd) in seen or (f.exists() and f.stat().st_size>1000):continue
+   seen.add((text,retake,spd));todo.append((text,retake,spd))
   if not todo:return
-  wavs=generate([normalize_text_for_tts(t) for t,_ in todo])
-  for (text,retake),w in zip(todo,wavs):
-   if isinstance(w,np.ndarray) and abs(speed-1.0)>=0.01:w=change_tempo(w,st['sr'],speed)
-   st['tts'].save(w,str(cached(text,retake)))
+  wavs=generate([normalize_text_for_tts(t) for t,_,_ in todo])
+  for (text,retake,spd),w in zip(todo,wavs):
+   k=speed if spd is None else spd
+   if isinstance(w,np.ndarray) and abs(k-1.0)>=0.01:w=change_tempo(w,st['sr'],k)
+   st['tts'].save(w,str(cached(text,retake,spd)))
 
- def synth(text,retake=0):
+ def synth(text,retake=0,spd=None):
   """Synthesize once, cached by content hash so a crashed/rerun revision
   resumes without re-paying, and an edited scene never plays back old audio.
 
   `retake` is how many times this scene's delivery was rejected. Same words,
   same settings, so without it the cache would return the identical take and
   "read this one better" would be a no-op."""
-  prefetch([(text,retake)])
-  return sf.read(str(cached(text,retake)),dtype='float32')[0]
+  prefetch([(text,retake,spd)])
+  return sf.read(str(cached(text,retake,spd)),dtype='float32')[0]
 
  def scene_level(sc):
-  return cfg.get('tts_scene_synthesis',True) and len(sc['narration'])<=cfg.get('tts_max_chars',256)
+  """Directed scenes (per-line speeds/gains) are always read line by line."""
+  return 'speeds' not in sc and cfg.get('tts_scene_synthesis',True) and len(sc['narration'])<=cfg.get('tts_max_chars',256)
+ def lines(sc):
+  return list(zip(sc['texts'],[int(sc.get('retake',0))]*len(sc['texts']),sc.get('speeds') or [None]*len(sc['texts'])))
  first=[]
  for sc in req['scenes']:
-  r=int(sc.get('retake',0))
-  first+=[(sc['narration'],r)] if scene_level(sc) else [(t,r) for t in sc['texts']]
+  first+=[(sc['narration'],int(sc.get('retake',0)))] if scene_level(sc) else lines(sc)
  prefetch(first)
 
  # Scene-level synthesis keeps the intonation arc across sentences: vieneu infers
@@ -205,14 +218,17 @@ def run(source,out):
   if scene_level(sc):
    pieces=split_at(synth(sc['narration'],retake),sr,texts)
   if pieces is None:
-   prefetch([(t,retake) for t in texts])
-   pieces=[synth(t,retake) for t in texts]
+   prefetch(lines(sc))
+   pieces=[synth(*x) for x in lines(sc)]
+   # Directed level per line (quoted speech, a closing line read low). Mastering
+   # is one static gain for the whole track, so these differences survive.
+   pieces=[w*np.float32(10**(g/20)) for w,g in zip(pieces,sc.get('gains') or [0]*len(pieces))]
    for i in range(len(pieces)-1):
     pad=pause_pad_samples(pieces[i],pieces[i+1],sr,float(sc['gaps'][i]))
     pieces[i]=np.concatenate([pieces[i],np.zeros(pad,dtype=np.float32)])
    modes.append({'scene_id':sc['scene_id'],'mode':'per-sentence'})
   else:modes.append({'scene_id':sc['scene_id'],'mode':'scene'})
-  flat.extend([{'scene_id':sc['scene_id'],'text':t,'wav':w} for t,w in zip(texts,pieces)])
+  flat.extend([{'scene_id':sc['scene_id'],'text':t,'wav':w,'voiced':voiced_samples(w,sr)} for t,w in zip(texts,pieces)])
   flat[-1]['pause']=float(sc['tail'])
 
  # The pause belongs to the chunk that is ending, so the timeline stays contiguous
@@ -225,7 +241,7 @@ def run(source,out):
    w=np.concatenate([w,np.zeros(pause_pad_samples(w,nxt,sr,x['pause']),dtype=np.float32)])
   path=f'segment-{i:03}.wav'
   sf.write(str(out/path),w,sr,subtype='PCM_16')
-  results.append({'scene_id':x['scene_id'],'text':x['text'],'path':path})
+  results.append({'scene_id':x['scene_id'],'text':x['text'],'path':path,'voiced':x['voiced']/sr})
  (out/'tts-result.json').write_text(json.dumps({'voice':str(st['voice']),'label':st['label'],'engine':st['engine'],'fallbacks':fallbacks,'settings':cfg,'scenes':modes,'segments':results},ensure_ascii=False,indent=2))
 
 if __name__=='__main__':

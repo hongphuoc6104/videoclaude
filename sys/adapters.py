@@ -435,7 +435,7 @@ def run_ffmpeg(cmd,log):
  with open(log,'a') as f:f.write('$ '+' '.join(cmd)+'\n'+r.stdout+r.stderr+'\n')
  return r
 
-def master(src,dst,cfg):
+def master(src,dst,cfg,fx=None):
  """EQ, then a static gain to target loudness with a true-peak limiter.
 
  loudnorm is used for ANALYSIS only: its dynamic mode pads and resamples to
@@ -445,6 +445,9 @@ def master(src,dst,cfg):
  alimiter needs level=disabled or it auto-normalises straight back to 0 dBFS.
  Every filter here is sample-preserving; the frame count is asserted anyway.
 
+ fx is the brief's voice colour (delivery.fx, e.g. warmth and a small room),
+ applied before the EQ; it must be length-preserving like the rest.
+
  Every ffmpeg invocation is logged to <dst>.log next to tts.log/tts-en.log.
  Any ffmpeg failure or invalid intermediate file raises Blocked instead of
  silently leaving the un-mastered `src` in place -- a swallowed failure here
@@ -453,6 +456,8 @@ def master(src,dst,cfg):
  """
  log=dst.parent/(dst.stem+'.log')
  eq='equalizer=f=200:t=q:w=1:g=1.5,equalizer=f=7000:t=q:w=2:g=-2.5'
+ # An echo rings past the end; trim back to the source length (the last chunk ends in silence).
+ if fx:eq=f'{fx},atrim=end_sample={frames_of(src)},{eq}'
  r=run_ffmpeg(['ffmpeg','-y','-i',str(src),'-af',eq,'-ar','48000','-c:a','pcm_s16le',str(dst)],log)
  if r.returncode or not (dst.exists() and dst.stat().st_size>1000):
   raise Blocked(f'Audio mastering (EQ) failed; see {log.name}')
@@ -535,9 +540,19 @@ def audio(p,j,out):
  if not py.exists():raise Blocked('Install local TTS environment')
  retake=retakes(p,j)
  scenes=[{'scene_id':s['id'],'narration':s['narration'],'texts':chunks(s['narration']),'retake':retake.get(s['id'],0)} for s in content['scenes']]
- for k,sc in enumerate(scenes):
-  sc['gaps']=[gap_after(t,g) for t in sc['texts'][:-1]]
-  sc['tail']=g.get('tail',DEFAULT_PAUSE['tail']) if k==len(scenes)-1 else g.get('para',DEFAULT_PAUSE['para'])
+ b=p.brief(j)[0] if p.brief(j) else {}
+ profile=b.get('delivery')
+ if profile:
+  # Voice direction from the brief (scripts/delivery.py): per-scene speed and
+  # pauses, per-line level; the worker reads directed scenes line by line.
+  from scripts.delivery import direct
+  reqs={s['id']:s.get('requirements',[]) for s in content['scenes']}
+  plan={d['scene_id']:d for d in direct([dict(sc,requirements=reqs[sc['scene_id']]) for sc in scenes],profile)}
+  for sc in scenes:sc.update({k:plan[sc['scene_id']][k] for k in ('texts','speeds','gains','gaps','tail')})
+ else:
+  for k,sc in enumerate(scenes):
+   sc['gaps']=[gap_after(t,g) for t in sc['texts'][:-1]]
+   sc['tail']=g.get('tail',DEFAULT_PAUSE['tail']) if k==len(scenes)-1 else g.get('para',DEFAULT_PAUSE['para'])
  keys=('tts_voice','tts_temperature','tts_top_p','tts_max_chars','tts_scene_synthesis','tts_backend','tts_precision','tts_speed','tts_device','tts_gpu_dtype','tts_batch_size')
  # Job-level cache dir (not per-revision): pilot.run() always mkdirs a fresh
  # revisions/audio/N, so a cache rooted there could never hit across runs.
@@ -556,10 +571,14 @@ def audio(p,j,out):
    fmt=(wav.getnchannels(),wav.getsampwidth(),wav.getframerate())
    if params and fmt!=params:raise Blocked('Inconsistent TTS audio formats')
    params=fmt;duration=wav.getnframes()/wav.getframerate();frames.append(wav.readframes(wav.getnframes()))
-  segments.append({'scene_id':x['scene_id'],'text':x['text'],'start':cursor,'end':cursor+duration,'path':rel(p,j,file)});cursor+=duration
+  seg={'scene_id':x['scene_id'],'text':x['text'],'start':cursor,'end':cursor+duration,'path':rel(p,j,file)}
+  # Where the voice stops inside the segment (the rest is its pause): the bed
+  # rises in real silences instead of treating the whole segment as speech.
+  if x.get('voiced') is not None:seg['speech_end']=round(cursor+min(duration,float(x['voiced'])),4)
+  segments.append(seg);cursor+=duration
  combined=out/'narration.wav'
  with wave.open(str(combined),'wb') as wav:wav.setnchannels(params[0]);wav.setsampwidth(params[1]);wav.setframerate(params[2]);wav.writeframes(b''.join(frames))
- master(combined,out/'narration_eq.wav',cfg)
+ master(combined,out/'narration_eq.wav',cfg,fx=(profile or {}).get('fx'))
  srt=out/'subtitles.srt';srt.write_text(make_srt(segments))
  payload={'voice':meta['voice'],'backend':meta.get('engine',{}).get('backend','onnx'),'wav':rel(p,j,combined),'srt':rel(p,j,srt),'duration':cursor,'segments':segments}
  if needs_en(p,j):payload['en']=english(p,j,out,cfg,content['scenes'])

@@ -31,6 +31,34 @@ Khung 16:9 đọc tiếng Việt (`audio_language: "vi"` trong brief); không c�
 - **Ngôi kể** (`--pov`): ghi vào brief thành yêu cầu "Ngôi kể: …".
 - **Văn phong kịch bản** (`horror/narration-style.md`, tiếng Anh vì là chỉ dẫn nội bộ): cách dựng nỗi sợ bằng chi tiết sai lệch nhỏ, leo thang điềm lạ, gieo chi tiết rồi trả ở cú lật, nhịp câu hợp giọng đọc máy, giới hạn sáo ngữ, cấu trúc theo tỷ lệ cảnh (mở 1 cảnh, dựng ~20%, leo thang ~45%, cao trào ~20%, dư âm ~10%, khép 1 cảnh) và cách tả hình. File này được nạp vào lời gọi viết kịch bản qua `config.json` → `narration_styles.horror_story`, sau hướng dẫn lời dẫn chung.
 
+## Đạo diễn giọng kể
+
+Giọng máy đọc mọi câu cùng tốc độ, cùng độ to, cùng khoảng nghỉ, nên cao trào nghe y như đoạn mở đầu. Đo trên job `thu-5p-h007g`: tốc độ giữa 10 cảnh chỉ lệch ±5%, độ to lệch 0,8 dB. Bước giọng đọc vì vậy có thêm phần đạo diễn (`scripts/delivery.py`). Phần này chỉ đổi tốc độ, độ to và khoảng lặng; không đổi chữ và vẫn giữ giọng Phạm Tuyên.
+
+- **Hồ sơ đạo diễn** ở `channel.json` → `delivery`. Khi mở job, `bank.py start` chép hồ sơ này vào brief (`brief.delivery`, kèm không khí đã chọn). Sửa `channel.json` chỉ có tác dụng với job mở sau đó.
+- **Kiểu đọc từng cảnh** lấy theo mã ý của cảnh:
+
+  | Mã ý | Kiểu đọc | Cách đọc |
+  |---|---|---|
+  | R1 | mở đầu (người dẫn) | chậm |
+  | R2 | dựng truyện | chậm nhất |
+  | R3 | leo thang | chậm, nhiều khoảng lặng |
+  | R4 | cao trào | nhanh nhất, nghỉ ngắn |
+  | R5 | dư âm | chậm, nặng |
+  | R6 | khép lại (người dẫn) | chậm |
+
+  Cảnh gắn nhiều mã ý thì lấy kiểu mạnh nhất (thứ tự trong `priority`). Không khí truyện nhân thêm hệ số: `tense` nhanh hơn và nghỉ ít hơn; `slow_burn` và `folk` chậm hơn, nghỉ dài hơn.
+- **Chỉnh từng câu** theo dấu hiệu trong chữ:
+  - Thoại trong ngoặc kép được tách thành câu riêng, có khoảng lặng trước và sau, đọc nhỏ hơn 4 dB. Thoại kết bằng "!" giữ gần nguyên độ to.
+  - Câu kết bằng "…" nghỉ khoảng 1,2 giây.
+  - Câu hỏi nghỉ 1 giây.
+  - Câu từ 8 tiếng trở xuống trong cảnh căng có khoảng lặng hai bên.
+  - Câu cuối của cảnh căng được đọc sau một khoảng lặng, nhỏ hơn 6 dB và chậm hơn.
+- **Màu giọng** (`delivery.fx`): ấm phần trầm, bớt chói phần cao, thêm chút vang phòng nhỏ. Hiệu ứng này áp lúc hoàn thiện lời dẫn và không làm đổi độ dài file.
+- **Nhạc nền**: mỗi đoạn lời dẫn ghi `speech_end` (chỗ giọng dừng). Nhờ đó nền chỉ nhỏ xuống khi đang có tiếng nói và lớn dần lên trong các khoảng lặng. Tiếng động và nhịp hình cũng neo theo phần có tiếng nói.
+- **Thời lượng**: đọc có đạo diễn dài hơn, 1169 chữ mất 347 giây thay vì 299 giây. Brief kinh dị vì thế dùng tốc độ đã đo là 3,3 chữ/giây (đã tính khoảng lặng) để đặt số chữ mỗi cảnh.
+- Brief không có `delivery` (job cũ, video không phải kinh dị) vẫn đọc như trước, và bộ đệm giọng cũ vẫn dùng lại được.
+
 ## Kịch bản dài (viết theo từng đoạn)
 
 Một lần gọi agy chỉ có tối đa 180 giây, không đủ viết 20–40 cảnh. Khi brief có nhiều cảnh hơn `config.json` → `content_chunk_scenes` (mặc định 6), `pilot.py run JOB content` tự làm theo `scripts/long_script.py`:

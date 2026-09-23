@@ -254,7 +254,7 @@ def timeline(c, images, audio, language, ratio):
                     pos=text.find(seg['text'],cursor)
                     if pos<0: continue
                     if pos<=offset<pos+len(seg['text']):
-                        at=seg['start']+(offset-pos)/max(1,len(seg['text']))*(seg['end']-seg['start']);break
+                        at=seg['start']+(offset-pos)/max(1,len(seg['text']))*(seg.get('speech_end',seg['end'])-seg['start']);break
                     cursor=pos+len(seg['text'])
             im=by_id[(bt['image_id'],ratio)]
             beats.append({'id':bt['id'],'src':im['path'],'at':round(at-start,4),'effect':bt['effect'],'focus':bt['focus']})

@@ -252,6 +252,13 @@ def make_brief(seed, cfg, choice):
         brief['audio_language'] = 'vi'
     # CC0 bed follows the chosen mood; effects are placed by the script on the words that describe them.
     brief['sound'] = {'bed': mood['music'], 'sfx': True}
+    # How the voice reads each scene and line (scripts/delivery.py); the mood scales speed and pauses.
+    if cfg.get('delivery'):
+        brief['delivery'] = {**{k: v for k, v in cfg['delivery'].items() if k != 'note'}, 'mood': mood_key}
+        # Directed reading is slower and holds longer silences: 1169 words took 347 s on job thu-5p-h007g
+        # (3.37 words/s including pauses) against 299 s undirected, so word targets must plan for it.
+        brief['planning']['speech_rates']['vi'] = {'units_per_second': 3.3, 'uncertainty': 0.15, 'includes_pauses': True,
+                                                   'source': 'measured: directed Phạm Tuyên narration, thu-5p-h007g, 2026-09-23'}
     return brief
 
 

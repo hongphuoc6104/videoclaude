@@ -2,7 +2,7 @@
 
 Applies to briefs with `video_type: horror_story`. It adds to the general narration guide. The hard rules there still win: never drop or merge required points, and write and freeze the narration before placing coverage quotes and beat anchors.
 
-The narration is heard, not read, in one deep male Vietnamese TTS voice at a slow pace. Write for the ear.
+The narration is heard, not read, in one deep male Vietnamese TTS voice at a slow pace, directed scene by scene (see "How the voice will read it"). Write for the ear.
 
 ## Voice
 
@@ -29,6 +29,17 @@ The narration is heard, not read, in one deep male Vietnamese TTS voice at a slo
 - Use full stops and commas for pauses. Use "…" at most twice per scene. No exclamation marks outside dialogue. No all-caps words. No stretched letters ("aaaa").
 - Dialogue: at most three short lines per scene, in quotation marks, with the speaker named before the line ("Bà cụ nói nhỏ: “…”"). One voice reads everything, so the listener must always know who speaks.
 - Write numbers and times as words ("hai giờ sáng").
+- Write the way a teller talks, not the way a book reads. Prefer plain spoken words over literary phrasing ("tôi lạnh cả người" rather than "máu trong huyết quản tôi như đông cứng lại"). Break a long chain of clauses into two sentences.
+
+## How the voice will read it (voice direction)
+
+The audio step directs the voice from the text itself (`scripts/delivery.py`). The words are never changed, so the script decides where the delivery changes:
+- Setup scenes are read slowest, climax scenes fastest with the tightest pauses, and the aftermath slow and heavy. Write the climax in shorter sentences so the faster pace fits.
+- "…" at the end of a phrase holds about a second of silence and ends the line there. Put it right before a reveal ("Tôi hé tia sáng… Nó đang mở.").
+- In escalation and climax scenes, a sentence of eight words or fewer gets silence on both sides. Use short lines for the scare line and the beat just before it.
+- A line in quotation marks is read apart from the narration and softer; a line ending in "!" stays at full level. Close the quote in the same scene.
+- The last sentence of an escalation or climax scene is read low and slow after a pause. Make it the scene's hook.
+- A question gets a pause after it, so the listener has time to answer it in their head.
 - Scene length follows the word target given in the call, which comes from the video length. It overrides the 256-character note in the general guide. Long scenes are fine because the voice is synthesized sentence by sentence, so make every sentence stand on its own.
 
 ## Vietnamese texture

@@ -244,7 +244,7 @@ def anchor_seconds(text, anchor, spans):
         if pos < 0:
             continue
         if pos <= offset < pos + len(seg['text']):
-            return seg['start'] + (offset - pos) / max(1, len(seg['text'])) * (seg['end'] - seg['start'])
+            return seg['start'] + (offset - pos) / max(1, len(seg['text'])) * (seg.get('speech_end', seg['end']) - seg['start'])
         cursor = pos + len(seg['text'])
     return start + offset / max(1, len(text)) * (end - start)
 
@@ -255,7 +255,8 @@ def build(content, brief, audio, language, narration_path, out_path, lib=None):
     plan = brief.get('sound') or {}
     x, sr = read_wav(narration_path)
     rows = audio['en']['scenes'] if language == 'en' else audio['segments']
-    spans = [(s['start'], s['end']) for s in rows]
+    # speech_end (directed Vietnamese narration) marks where the voice stops inside a segment that carries its pause.
+    spans = [(s['start'], s.get('speech_end', s['end'])) for s in rows]
     scenes = {}
     for s in rows:
         scenes.setdefault(s['scene_id'], []).append(s)

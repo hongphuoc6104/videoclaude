@@ -126,6 +126,34 @@
       "music": "pulse"
     }
   },
+  "delivery": {
+    "note": "Đạo diễn giọng kể (scripts/delivery.py). Mỗi cảnh lấy một kiểu đọc theo mã ý R1–R6; vài dấu hiệu trong câu chỉnh riêng từng câu: thoại trong ngoặc kép, câu ngắn ở cảnh căng, câu hỏi, dấu “…”, câu khép cảnh căng. speed là tốc độ so với giọng gốc; sentence/minor/tail là giây im lặng sau câu, sau vế và sau cảnh; gain_db là độ to so với lời kể. Chỉ đổi tốc độ, độ to, khoảng lặng; không đổi chữ.",
+    "roles": {"R1": "host_open", "R2": "setup", "R3": "rising", "R4": "climax", "R5": "aftermath", "R6": "host_close"},
+    "priority": ["host_open", "host_close", "climax", "rising", "aftermath", "setup"],
+    "styles": {
+      "host_open": {"speed": 0.9, "sentence": 0.7, "minor": 0.3, "tail": 1.4},
+      "setup": {"speed": 0.88, "sentence": 0.65, "minor": 0.3, "tail": 1.1},
+      "rising": {"speed": 0.9, "sentence": 0.7, "minor": 0.3, "tail": 1.4, "tense": true},
+      "climax": {"speed": 1.0, "sentence": 0.45, "minor": 0.2, "tail": 1.8, "tense": true},
+      "aftermath": {"speed": 0.85, "sentence": 0.85, "minor": 0.35, "tail": 1.5},
+      "host_close": {"speed": 0.88, "sentence": 0.7, "minor": 0.3, "tail": 1.0}
+    },
+    "end_tail": 1.2,
+    "moods": {
+      "slow_burn": {"speed": 0.97, "pause": 1.1},
+      "psychological": {"speed": 1.0, "pause": 1.0},
+      "folk": {"speed": 0.96, "pause": 1.1},
+      "tense": {"speed": 1.05, "pause": 0.85}
+    },
+    "lines": {
+      "beat_pause": 1.2,
+      "question_pause": 1.0,
+      "short": {"max_words": 8, "pause_before": 0.9, "pause_after": 1.0},
+      "dialogue": {"pause_before": 0.55, "inner": 0.3, "pause_after": 0.9, "gain_db": -4, "shout_gain_db": -1},
+      "reveal": {"pause_before": 1.2, "gain_db": -6, "speed": 0.9}
+    },
+    "fx": "bass=g=2.5:f=140,treble=g=-2:f=6000,aecho=0.8:0.4:55|95:0.14|0.08"
+  },
   "avoid": [
     "Nêu hoặc ám chỉ người, địa danh, vụ án hay sự kiện có thật; không gắn nhãn ma ám cho bất kỳ địa điểm có thật nào",
     "Khẳng định hay gợi ý câu chuyện là có thật",

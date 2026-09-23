@@ -298,6 +298,82 @@
         "speech_rates"
       ],
       "additionalProperties": false
+    },
+    "delivery": {
+      "type": "object",
+      "description": "Voice direction profile (scripts/delivery.py); copied from the channel config.",
+      "properties": {
+        "roles": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "priority": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "styles": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "speed": {
+                "type": "number",
+                "minimum": 0.5,
+                "maximum": 2
+              },
+              "sentence": {
+                "type": "number",
+                "minimum": 0
+              },
+              "minor": {
+                "type": "number",
+                "minimum": 0
+              },
+              "tail": {
+                "type": "number",
+                "minimum": 0
+              },
+              "tense": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "speed",
+              "sentence",
+              "minor",
+              "tail"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "end_tail": {
+          "type": "number",
+          "minimum": 0
+        },
+        "moods": {
+          "type": "object"
+        },
+        "mood": {
+          "type": "string"
+        },
+        "lines": {
+          "type": "object"
+        },
+        "fx": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "roles",
+        "priority",
+        "styles",
+        "lines"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
