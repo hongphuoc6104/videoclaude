@@ -33,6 +33,7 @@ class Pilot:
   paths=[self.root/x for x in ['pilot.py','workflow.py','machine_review.py','content_contract.py','image_pipeline.py','prompt_templates.py','adapters.py','tts_worker.py','config.json','AGENTS.md','GEMINI.md','package.json','package-lock.json','requirements.txt','tts-requirements.lock','tts-gpu-requirements.lock','en-requirements.lock']]
   paths.append(self.root/'b2_bridge.py')
   paths += list((self.root/'vocab').glob('*.py'))
+  paths += list((self.root/'horror').glob('*.py'))
   engine = self.root/'experiments/b2_illustrator'
   paths += [x for x in engine.glob('*') if x.suffix in ('.py','.mjs') and not x.name.startswith('test')]
   paths += [engine/x for x in ('config.json','acceptance.json','browser-profiles.json')]
@@ -54,6 +55,12 @@ class Pilot:
    module,_,func=ref.partition(':')
    import importlib
    getattr(importlib.import_module(module),func or 'check')(self.root,j,brief)
+ def content_policies(self,j,brief,content):
+  # Kiểm tra nội dung riêng của kênh (ví dụ an toàn truyện hư cấu) do config chỉ định.
+  for ref in read(self.root/'config.json').get('content_policies',[]):
+   module,_,func=ref.partition(':')
+   import importlib
+   getattr(importlib.import_module(module),func or 'check')(self.root,j,brief,content)
  def new(self,j,brief=None):
   if brief is not None:
    from content_contract import validate_brief
@@ -150,7 +157,7 @@ class Pilot:
  def checks(self,j,m,p):
   if m=='content' and self.brief(j):
    from content_contract import validate_content
-   b,rev,h=self.brief(j);validate_content(self.root,b,rev,h,p);return []
+   b,rev,h=self.brief(j);validate_content(self.root,b,rev,h,p);self.content_policies(j,b,p);return []
   if m=='images' and self.brief(j):
    import image_pipeline
    return image_pipeline.check(self,j,p)

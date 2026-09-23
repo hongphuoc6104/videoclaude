@@ -1,0 +1,166 @@
+{
+  "version": 1,
+  "note": "Hạt giống truyện: chỉ mô-típ và hướng đi, không phải lời kể. basis.type: public_domain (tác phẩm đã hết bảo hộ, chỉ mượn mô-típ, không dùng bản dịch hiện đại), folklore (mô-típ dân gian), original (tự viết). Thêm hạt giống bằng cách thêm mục mới với id kế tiếp; không đổi id đã có.",
+  "seeds": [
+    {
+      "id": "H001",
+      "title": "Tiếng gõ sau tấm gương",
+      "subgenre": "nhà trọ đô thị",
+      "setting": "Một dãy phòng trọ cũ cuối con hẻm sâu ở một thành phố không tên",
+      "premise": "Một sinh viên thuê được phòng trọ rẻ bất thường; chủ nhà tránh nhìn vào mắt khi đưa chìa khóa",
+      "dread": ["Tiếng gõ ba tiếng lúc hai giờ sáng nhưng hành lang trống", "Tấm gương trong phòng bị treo úp mặt vào tường", "Mặt sau tấm gương dán một tờ giấy vàng chữ đã mờ"],
+      "twist": "Tiếng gõ không đến từ ngoài cửa mà từ phía sau tấm gương, và đêm nó gõ bốn tiếng là đang đếm thêm một người trong phòng",
+      "basis": {"type": "original", "note": "Truyện tự viết cho kênh"}
+    },
+    {
+      "id": "H002",
+      "title": "Cây gạo đầu bến",
+      "subgenre": "ma cổ tích làng quê",
+      "setting": "Một bến đò vắng có cây gạo cổ thụ, thời xưa không rõ niên đại",
+      "premise": "Một chàng lái buôn trẻ mỗi chiều qua bến gặp một cô gái đẹp nói mình ở ngay sau gốc gạo",
+      "dread": ["Cô gái chỉ xuất hiện khi trời đã sẫm", "Dân làng nói nhà sau gốc gạo bỏ hoang đã lâu", "Chàng ngày càng xanh xao, bỏ bê buôn bán"],
+      "twist": "Nơi cô gái đưa chàng về là một nấm mộ dưới gốc gạo, và cô không định để chàng rời đi",
+      "basis": {"type": "public_domain", "work": "Chuyện cây gạo (Mộc miên thụ truyện), Truyền kỳ mạn lục", "author": "Nguyễn Dữ", "year": "thế kỷ 16", "note": "Chỉ mượn mô-típ hồn ma nương cây gạo quyến rũ người sống; tên, bối cảnh và diễn biến kể mới"}
+    },
+    {
+      "id": "H003",
+      "title": "Tấm da vẽ",
+      "subgenre": "yêu quái đội lốt người",
+      "setting": "Một thị trấn nhỏ và căn nhà ngoài rìa có thư phòng",
+      "premise": "Một thầy đồ đưa về nhà một người con gái lạc đường, giấu cả vợ",
+      "dread": ["Người con gái không bao giờ soi gương", "Một ông thầy lang qua đường bảo thầy đồ đang mang tử khí", "Cửa thư phòng khóa trong, bên trong có tiếng bút lông sột soạt"],
+      "twist": "Qua khe cửa, thầy đồ thấy một thứ gớm ghiếc đang tô vẽ lại một tấm da người trải trên bàn rồi khoác lên mình; cảnh này chỉ kể bằng bóng và âm thanh, không tả máu",
+      "basis": {"type": "public_domain", "work": "Họa bì, Liêu Trai chí dị", "author": "Bồ Tùng Linh", "year": "thế kỷ 18", "note": "Mượn mô-típ yêu quái vẽ da người; không dùng bản dịch hiện đại, kể mới và bỏ phần máu me"}
+    },
+    {
+      "id": "H004",
+      "title": "Người đàn bà trong sương núi",
+      "subgenre": "ma núi rừng",
+      "setting": "Một bản vùng cao quanh năm sương mù, căn chòi canh nương",
+      "premise": "Hai cha con đi rừng bị kẹt trong chòi giữa đêm sương dày; người con thấy một người phụ nữ trắng như sương cúi xuống người cha",
+      "dread": ["Người cha lạnh cứng từ đó", "Người phụ nữ tha cho người con với một điều kiện: không bao giờ kể lại đêm đó", "Nhiều năm sau người con cưới một cô gái lạ xuống núi, da lạnh và không bao giờ già"],
+      "twist": "Khi người chồng lỡ kể lại đêm sương năm xưa cho vợ nghe, cô chính là người phụ nữ ấy",
+      "basis": {"type": "public_domain", "work": "Yuki-Onna, Kwaidan", "author": "Lafcadio Hearn", "year": "1904", "note": "Mượn mô-típ lời hứa giữ bí mật với hồn ma lạnh; chuyển thành sương núi, kể mới"}
+    },
+    {
+      "id": "H005",
+      "title": "Khuôn mặt trơn",
+      "subgenre": "ma đường đêm",
+      "setting": "Một con dốc vắng bên bờ hồ, có quán nước đêm ở cuối dốc",
+      "premise": "Một người đi làm về khuya thấy cô gái ngồi khóc bên dốc, quay lưng lại",
+      "dread": ["Cô gái không trả lời, chỉ khóc", "Khi cô quay lại, khuôn mặt trơn nhẵn không mắt không mũi", "Người ấy chạy tới quán nước cuối dốc kể cho ông chủ quán"],
+      "twist": "Ông chủ quán vuốt mặt hỏi có phải trông như thế này không, và mặt ông cũng trơn nhẵn; ngọn đèn quán tắt phụt",
+      "basis": {"type": "public_domain", "work": "Mujina, Kwaidan", "author": "Lafcadio Hearn", "year": "1904", "note": "Mượn mô-típ mặt trơn lặp lại hai lần; bối cảnh và nhân vật kể mới"}
+    },
+    {
+      "id": "H006",
+      "title": "Bàn tay khô ba điều ước",
+      "subgenre": "vật bị nguyền",
+      "setting": "Một gia đình nghèo ở ven đô, người cha làm bảo vệ nhà máy",
+      "premise": "Một người buôn đồ cổ để lại bàn tay khô của một con vật, nói nó cho ba điều ước nhưng khuyên nên đốt đi",
+      "dread": ["Điều ước đầu là một khoản tiền; hôm sau khoản tiền tới đúng bằng thế, là tiền bồi thường con trai gặp nạn ở nhà máy", "Người mẹ ước con trở về", "Nửa đêm có tiếng bước chân lê chậm ngoài ngõ rồi tiếng gõ cửa"],
+      "twist": "Người cha dùng điều ước cuối trước khi người mẹ kịp mở cửa; tiếng gõ dừng, ngoài ngõ chỉ còn gió; không bao giờ biết thứ gì đã đứng đó",
+      "basis": {"type": "public_domain", "work": "The Monkey's Paw", "author": "W. W. Jacobs", "year": "1902", "note": "Mượn cấu trúc ba điều ước trả giá; không tả tai nạn chi tiết"}
+    },
+    {
+      "id": "H007",
+      "title": "Nhịp tim dưới sàn gỗ",
+      "subgenre": "tâm lý tội lỗi",
+      "setting": "Một căn nhà gỗ cũ, người kể là kẻ ở trọ",
+      "premise": "Người kể một mực nói mình tỉnh táo, rồi kể vì sao không chịu nổi con mắt đục của ông chủ nhà",
+      "dread": ["Người kể rình ông già nhiều đêm liền", "Ông già biến mất, sàn gỗ được đóng lại phẳng phiu", "Khách tới hỏi thăm, người kể nghe một tiếng đập đều mỗi lúc một to"],
+      "twist": "Tiếng đập chỉ mình người kể nghe thấy, và chính cậu ta gào lên thú nhận; ông già ra sao không được tả, chỉ để lại tiếng tim",
+      "basis": {"type": "public_domain", "work": "The Tell-Tale Heart", "author": "Edgar Allan Poe", "year": "1843", "note": "Mượn mô-típ người kể không đáng tin và tiếng tim tưởng tượng; không tả hành vi giết người"}
+    },
+    {
+      "id": "H008",
+      "title": "Người gác chắn tàu",
+      "subgenre": "điềm báo",
+      "setting": "Một trạm gác chắn tàu hẻo lánh bên đường ray qua đèo",
+      "premise": "Một người đi đường làm quen với ông gác chắn tàu ít nói, người thú nhận có một bóng người đứng ở cửa hầm vẫy tay",
+      "dread": ["Lần đầu bóng người xuất hiện, sau đó có tai nạn trên tuyến", "Lần thứ hai, sau đó có chuyện buồn trên một chuyến tàu", "Bóng người lại xuất hiện, vẫy tay và che mặt"],
+      "twist": "Người đi đường quay lại trạm thì ông gác chắn tàu đã không còn; câu người lái tàu hét lên lúc ấy đúng từng chữ với cử chỉ của bóng người",
+      "basis": {"type": "public_domain", "work": "The Signal-Man", "author": "Charles Dickens", "year": "1866", "note": "Mượn mô-típ bóng người báo trước ở cửa hầm; tai nạn chỉ được nhắc, không tả"}
+    },
+    {
+      "id": "H009",
+      "title": "Chiếc sáo xương trên bãi cát",
+      "subgenre": "vật khơi dậy",
+      "setting": "Một làng chài mùa gió bấc, nhà nghỉ nhỏ gần bãi đá đổ nát",
+      "premise": "Một thầy giáo về nghỉ ở làng chài nhặt được chiếc sáo cũ trong đống đá có khắc chữ lạ",
+      "dread": ["Thổi thử một hơi, gió nổi lên từ biển", "Đêm đêm thấy một bóng người xa xa trên bãi cát, mỗi đêm gần hơn", "Chiếc giường trống bên cạnh buổi sáng có vết như ai đã nằm"],
+      "twist": "Thứ được gọi dậy dựng mình từ tấm ga trải giường trống, khuôn mặt bằng vải nhàu; một người trong làng tới kịp và ném chiếc sáo xuống biển",
+      "basis": {"type": "public_domain", "work": "Oh, Whistle, and I'll Come to You, My Lad", "author": "M. R. James", "year": "1904", "note": "Mượn mô-típ vật cổ gọi hồn và tấm ga giường; kể mới ở làng chài hư cấu"}
+    },
+    {
+      "id": "H010",
+      "title": "Ngôi nhà mục",
+      "subgenre": "nhà cổ gia tộc",
+      "setting": "Một ngôi nhà cổ ba gian giữa vườn dừa ngập nước ở một vùng sông nước hư cấu",
+      "premise": "Người kể về thăm người bạn thời nhỏ, con trai cuối cùng của dòng họ, sống cùng em gái đang ốm nặng",
+      "dread": ["Cả ngôi nhà nứt một đường chạy từ mái xuống chân móng", "Người bạn nghe được mọi âm thanh nhỏ nhất, sợ ánh sáng", "Người em gái được đặt vào hầm nhà khi tưởng đã mất, và đêm bão có tiếng cào dưới sàn"],
+      "twist": "Người em gái đứng ở cửa trong đêm bão; hai anh em ngã xuống cùng lúc, người kể chạy ra vừa kịp thấy ngôi nhà sụp theo đường nứt chìm vào nước",
+      "basis": {"type": "public_domain", "work": "The Fall of the House of Usher", "author": "Edgar Allan Poe", "year": "1839", "note": "Mượn mô-típ nhà và dòng họ cùng sụp đổ; không tả thi thể"}
+    },
+    {
+      "id": "H011",
+      "title": "Khúc sông đòi người",
+      "subgenre": "ma nước",
+      "setting": "Một làng ven con sông lớn hư cấu, mùa nước lên",
+      "premise": "Mỗi năm đúng mùa nước lên, khúc sông trước làng lại có người gặp nạn; một cậu bé chăn trâu kết bạn với một đứa trẻ lạ hay ngồi trên bến",
+      "dread": ["Đứa trẻ lạ lúc nào cũng ướt", "Nó rủ cậu bé xuống tắm ở chỗ nước xoáy", "Bà cụ đầu làng bảo cậu đừng bao giờ nắm tay ai dưới nước"],
+      "twist": "Đứa trẻ lạ chính là người chết đuối năm ngoái đang tìm người thế chỗ; cậu bé thoát được vì nhớ lời bà cụ, nhưng năm sau đứa trẻ lại ngồi trên bến với khuôn mặt khác",
+      "basis": {"type": "folklore", "note": "Mô-típ ma da dân gian tìm người thế mạng; không mô tả nghi lễ trừ tà hay hướng dẫn tín ngưỡng"}
+    },
+    {
+      "id": "H012",
+      "title": "Đêm thứ bảy trong ký túc xá",
+      "subgenre": "bóng đè đô thị",
+      "setting": "Một ký túc xá cũ của một trường không tên, phòng tầng cao nhất",
+      "premise": "Một nữ sinh chuyển vào giường trống, bạn cùng phòng dặn đừng ngủ quay mặt vào tường",
+      "dread": ["Đêm nào cũng tỉnh giữa khuya mà không cử động được", "Có sức nặng ngồi lên mép giường, mỗi đêm nhích gần hơn", "Trên tường có vết cào nhỏ đếm ngày, đã đếm tới sáu"],
+      "twist": "Đêm thứ bảy cô quay mặt ra ngoài và thấy bạn cùng phòng đang ngồi ở mép giường nhìn mình; buổi sáng giường bên kia vẫn trống như từ trước tới giờ",
+      "basis": {"type": "original", "note": "Truyện tự viết; không trình bày bóng đè như kiến thức y khoa"}
+    },
+    {
+      "id": "H013",
+      "title": "Hồ cáo",
+      "subgenre": "yêu tinh cổ tích",
+      "setting": "Một vùng hồ lớn thời dựng nước, làng chài ven hồ, bối cảnh truyền thuyết không gắn địa danh thật",
+      "premise": "Dân làng ven hồ lần lượt mất người; có một cô gái lạ hay xuất hiện ở chợ phiên với nụ cười rất đẹp",
+      "dread": ["Người mất tích đều từng mua hàng của cô gái", "Chó trong làng sủa dữ mỗi lần cô đi qua", "Có người thấy bóng cô dưới trăng mang nhiều cái đuôi"],
+      "twist": "Một ông lão đánh cá nhận ra cô là hồ tinh ngàn năm; cả làng không đánh lại được, chỉ biết giữ lửa suốt đêm, và hồ từ đó mang tên một con cáo",
+      "basis": {"type": "public_domain", "work": "Truyện Hồ tinh, Lĩnh Nam chích quái", "author": "khuyết danh, nhiều bản chép", "year": "thế kỷ 15", "note": "Mượn mô-típ cáo chín đuôi hóa người; không nêu hồ, vùng hay nhân vật lịch sử có thật"}
+    },
+    {
+      "id": "H014",
+      "title": "Chuyến xe khách cuối ngày",
+      "subgenre": "ma trên đường",
+      "setting": "Một chuyến xe khách đêm qua con đèo vắng, xe không số hiệu",
+      "premise": "Anh phụ xe đếm vé thấy thừa một người, dù không ai lên thêm",
+      "dread": ["Mỗi lần đếm lại vẫn thừa đúng một", "Trên kính có dấu tay in từ phía ngoài dù xe đang chạy", "Một bà cụ ngồi cuối xe hỏi xe có dừng ở khúc cua đá không"],
+      "twist": "Xe dừng ở khúc cua đá cho bà cụ xuống, và khi đếm lại thì thiếu đi hai người, trong đó có anh tài xế vừa mở cửa",
+      "basis": {"type": "original", "note": "Truyện tự viết"}
+    },
+    {
+      "id": "H015",
+      "title": "Con búp bê của bà ngoại",
+      "subgenre": "đồ vật gia đình",
+      "setting": "Một căn nhà phố cũ, căn gác xép chứa đồ của bà ngoại vừa mất",
+      "premise": "Một bé gái được thừa hưởng con búp bê sứ bà giữ suốt đời, mẹ bé không muốn giữ nó",
+      "dread": ["Búp bê đổi chỗ trên kệ", "Bé gái bắt đầu nói bằng những câu của người già", "Trong ảnh cũ của bà ngoại lúc nhỏ có đúng con búp bê ấy, và một đứa trẻ khác không ai nhận ra"],
+      "twist": "Người mẹ tìm được thư bà viết: con búp bê không giữ ma, nó giữ một đứa em bà đã quên, và nó chỉ cần có người nhớ tới; căn nhà yên trở lại khi cả nhà thắp đèn nhắc tên",
+      "basis": {"type": "original", "note": "Truyện tự viết; kết ấm để cân bằng, không có nghi lễ cụ thể"}
+    },
+    {
+      "id": "H016",
+      "title": "Nhà ven núi đêm mưa",
+      "subgenre": "quỷ đầu bay",
+      "setting": "Một căn nhà gỗ giữa rừng núi, đêm mưa, một người đi buôn lạc đường",
+      "premise": "Người đi buôn xin trú đêm, gia chủ năm người hiếu khách lạ thường",
+      "dread": ["Họ không ăn, chỉ nhìn khách ăn", "Nửa đêm khách dậy thấy năm thân người nằm không đầu", "Ngoài rừng có tiếng cười nói xì xào bay lượn giữa các ngọn cây"],
+      "twist": "Khách giấu một thân đi, và cái đầu không tìm được thân lao theo khách tới sáng; người đi buôn sống sót nhưng áo còn in vết răng",
+      "basis": {"type": "public_domain", "work": "Rokuro-Kubi, Kwaidan", "author": "Lafcadio Hearn", "year": "1904", "note": "Mượn mô-típ đầu rời thân bay đêm; không tả máu, cảnh đầu bay chỉ thấy trong bóng tối"}
+    }
+  ]
+}

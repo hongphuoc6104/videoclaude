@@ -20,12 +20,12 @@
   "tts_device": "auto",
   "tts_gpu_dtype": "float32",
   "tts_batch_size": 6,
-  "tts_voice": "Minh Quân Pro",
+  "tts_voice": "Phạm Tuyên",
   "tts_temperature": 0.65,
   "tts_top_p": 0.95,
   "tts_max_chars": 256,
   "tts_scene_synthesis": true,
-  "tts_speed": 0.92,
+  "tts_speed": 1.0,
   "en_temperature": 0.3,
   "en_device": "cpu",
   "tts_pause": {
@@ -54,6 +54,10 @@
     "outfit": "Áo thun cộc tay màu xanh biển nhạt"
   },
   "brief_policies": [
-    "vocab.policy:check"
+    "vocab.policy:check",
+    "horror.policy:check"
+  ],
+  "content_policies": [
+    "horror.policy:lint"
   ]
 }

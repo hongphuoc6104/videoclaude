@@ -1,0 +1,222 @@
+{
+  "version": 1,
+  "note": "Cấu hình kênh truyện kinh dị. Không có mặc định cho tỷ lệ khung, thời lượng, hạt giống hay chế độ: bank.py start hỏi người dùng khi thiếu. Sửa lựa chọn ở đây thay vì sửa horror/bank.py.",
+  "video_type": "horror_story",
+  "language": "vi",
+  "audience": "Người lớn Việt Nam thích nghe truyện kinh dị hư cấu, rùng rợn nhưng không máu me; kênh không dành cho trẻ em",
+  "tone": "trầm, chậm rãi, rùng rợn tăng dần, gần gũi như kể bên ánh đèn",
+  "style": "Dark 2D horror illustration, comic-book inking with cold desaturated palette, deep shadows and a single warm light source, eerie mood built from darkness, empty space and small wrong details, no gore, no blood",
+  "pacing": "Mở nhanh bằng một câu móc; giữa truyện chậm lại để dựng không khí; mỗi điềm lạ sau căng hơn điềm trước; cao trào ngắn và dứt khoát",
+  "prior_knowledge": "Không cần kiến thức trước; người nghe có thể vừa làm việc khác vừa nghe",
+  "options": {
+    "aspect_ratio": {
+      "question": "Video này làm khung ngang hay dọc?",
+      "flag": "--ratio",
+      "choices": [
+        {
+          "value": "16:9",
+          "label": "Ngang 16:9 (YouTube thường, xem trên TV/máy tính)"
+        },
+        {
+          "value": "9:16",
+          "label": "Dọc 9:16 (điện thoại, Shorts/TikTok)"
+        }
+      ]
+    },
+    "length": {
+      "question": "Truyện dài khoảng bao lâu?",
+      "flag": "--length",
+      "choices": [
+        {
+          "value": "10-15",
+          "label": "10–15 phút (20 cảnh)",
+          "min_seconds": 600,
+          "max_seconds": 900,
+          "scene_count": 20
+        },
+        {
+          "value": "15-20",
+          "label": "15–20 phút (28 cảnh)",
+          "min_seconds": 900,
+          "max_seconds": 1200,
+          "scene_count": 28
+        },
+        {
+          "value": "20-30",
+          "label": "20–30 phút (40 cảnh)",
+          "min_seconds": 1200,
+          "max_seconds": 1800,
+          "scene_count": 40
+        }
+      ]
+    },
+    "seed": {
+      "question": "Kể truyện nào? (chọn hạt giống trong kho, hoặc để kho tự lấy truyện kế tiếp)",
+      "flag": "--seed",
+      "choices_from": "bank",
+      "auto_label": "Tự lấy truyện kế tiếp trong kho"
+    },
+    "mode": {
+      "question": "Duyệt từng phần (review) hay để máy tự duyệt (auto)?",
+      "flag": "--mode",
+      "choices": [
+        {
+          "value": "review",
+          "label": "review — bạn duyệt kịch bản, media và video"
+        },
+        {
+          "value": "auto",
+          "label": "auto — máy tự đánh giá và chạy tới video"
+        }
+      ]
+    }
+  },
+  "avoid": [
+    "Nêu hoặc ám chỉ người, địa danh, vụ án hay sự kiện có thật; không gắn nhãn ma ám cho bất kỳ địa điểm có thật nào",
+    "Khẳng định hay gợi ý câu chuyện là có thật",
+    "Hướng dẫn nghi lễ, gọi hồn, bùa chú, thách đố hay bất kỳ việc gì người xem có thể làm theo",
+    "Máu me, mô tả vết thương chi tiết, mô tả phương thức tự tử hoặc tự hại",
+    "Xúc phạm tôn giáo, tín ngưỡng, dân tộc; biến bệnh tâm thần hay người khuyết tật thành thứ đáng sợ",
+    "Chép câu chữ của bất kỳ bản in hay bản dịch nào; chỉ mượn mô-típ rồi kể lại hoàn toàn bằng lời mới",
+    "Nội dung nhắm tới trẻ em"
+  ],
+  "domain_requirements": [
+    "Mọi tên người và địa danh trong truyện đều hư cấu; bối cảnh tả chung (một làng ven sông, một dãy trọ cuối hẻm), không dùng tên tỉnh, thành phố hay địa điểm có thật",
+    "Người dẫn chuyện là nhân vật đại diện kênh (người que áo xanh biển nhạt #8CCFE8), chỉ xuất hiện ở cảnh mở đầu và cảnh kết; các cảnh trong truyện dùng nhân vật riêng của truyện, không vẽ người que",
+    "Sợ bằng không khí: bóng tối, âm thanh được kể lại, chi tiết sai lệch nhỏ; không cảnh máu hay xác",
+    "Cảnh mở đầu nói rõ đây là truyện hư cấu; cảnh kết nhắc lại điều đó"
+  ],
+  "host": {
+    "id": "channel-mascot",
+    "name": "Người dẫn chuyện",
+    "reference_path": "assets/characters/channel-mascot/reference-v1.png",
+    "media_id": "de94a39b-155f-4afe-acbb-d9d4b59ad532",
+    "appearance": "Người que đầu tròn trắng viền xanh đen đậm, hai mắt oval đen, tay chân người que tối giản",
+    "outfit": "Áo thun cộc tay màu xanh biển nhạt (#8CCFE8)"
+  },
+  "text_style": {
+    "font": "Serif cổ điển hơi nhòe, cùng kiểu và độ đậm xuyên suốt",
+    "color": "#EDE6D6",
+    "outline": "Viền tối mờ để nổi trên nền đêm",
+    "size": "Vừa, đọc rõ trên điện thoại và TV",
+    "placement": "Cách mép ít nhất 10%; tránh mặt nhân vật"
+  },
+  "blocked_terms": {
+    "note": "Lưới an toàn thô cho horror/policy.py lint. claims_true/ritual/gore_self_harm không phân biệt hoa thường và bỏ qua khi bị phủ định ngay trước (\"không phải chuyện có thật\"). real_places so khớp đúng chữ hoa.",
+    "claims_true": [
+      "chuyện có thật",
+      "câu chuyện có thật",
+      "truyện có thật",
+      "hoàn toàn có thật",
+      "sự thật 100%",
+      "dựa trên sự kiện có thật",
+      "xảy ra thật"
+    ],
+    "ritual": [
+      "cách gọi hồn",
+      "cách triệu hồi",
+      "cách làm bùa",
+      "các bước gọi hồn",
+      "nghi thức gọi hồn",
+      "bạn hãy thử",
+      "hãy thử làm",
+      "thử thách gọi hồn"
+    ],
+    "gore_self_harm": [
+      "máu me",
+      "vũng máu",
+      "máu chảy",
+      "máu tươi",
+      "lòi ruột",
+      "moi ruột",
+      "cắt cổ",
+      "treo cổ",
+      "tự tử",
+      "tự sát",
+      "tự vẫn",
+      "cắt tay",
+      "nhảy lầu",
+      "uống thuốc độc",
+      "xác chết thối"
+    ],
+    "real_places": [
+      "Hà Nội",
+      "Sài Gòn",
+      "Hồ Chí Minh",
+      "TP.HCM",
+      "Hải Phòng",
+      "Đà Nẵng",
+      "Cần Thơ",
+      "Huế",
+      "Đà Lạt",
+      "Nha Trang",
+      "Vũng Tàu",
+      "Hội An",
+      "Sa Pa",
+      "Sapa",
+      "Hạ Long",
+      "Phú Quốc",
+      "Quy Nhơn",
+      "Buôn Ma Thuột",
+      "Tây Hồ",
+      "Hồ Gươm",
+      "Hoàn Kiếm",
+      "Hà Giang",
+      "Cao Bằng",
+      "Lạng Sơn",
+      "Lào Cai",
+      "Yên Bái",
+      "Tuyên Quang",
+      "Thái Nguyên",
+      "Bắc Giang",
+      "Bắc Ninh",
+      "Bắc Kạn",
+      "Hưng Yên",
+      "Hải Dương",
+      "Thái Bình",
+      "Nam Định",
+      "Hà Nam",
+      "Ninh Bình",
+      "Thanh Hóa",
+      "Nghệ An",
+      "Hà Tĩnh",
+      "Quảng Bình",
+      "Quảng Trị",
+      "Quảng Nam",
+      "Quảng Ngãi",
+      "Quảng Ninh",
+      "Bình Định",
+      "Phú Yên",
+      "Khánh Hòa",
+      "Ninh Thuận",
+      "Bình Thuận",
+      "Kon Tum",
+      "Gia Lai",
+      "Đắk Lắk",
+      "Đắk Nông",
+      "Lâm Đồng",
+      "Bình Dương",
+      "Bình Phước",
+      "Đồng Nai",
+      "Tây Ninh",
+      "Long An",
+      "Tiền Giang",
+      "Bến Tre",
+      "Vĩnh Long",
+      "Trà Vinh",
+      "Đồng Tháp",
+      "An Giang",
+      "Kiên Giang",
+      "Hậu Giang",
+      "Sóc Trăng",
+      "Bạc Liêu",
+      "Cà Mau",
+      "Điện Biên",
+      "Lai Châu",
+      "Sơn La",
+      "Phú Thọ",
+      "Vĩnh Phúc",
+      "Bà Rịa"
+    ]
+  }
+}
