@@ -25,6 +25,7 @@ class ImagesV2Tests(unittest.TestCase):
         cfg = read(self.root / 'config.json')
         cfg.pop('flow_batch', None)
         cfg['flow_require_ui_evidence'] = True  # Legacy strict-policy fixture; independent of deployment defaults.
+        cfg['concurrency'] = 1  # These tests assert submission order; deployments may run 4 workers.
         write(self.root / 'config.json', cfg)
         self.p = Pilot(self.root);self.j = 'images-test'
         self.p.new(self.j,read(ROOT/'examples/m1/brief.json'))
