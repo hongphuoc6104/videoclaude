@@ -327,7 +327,7 @@ def request(p, j, target, prompt, refs=(), registration=None, base_image=None):
     common = ['--profile', cfg['flow_profile'], '--project', cfg['flow_project'], '--out', str(out)]
     model_arg = 'nano-banana-pro' if 'pro' in cfg['flow_model'].lower() else ('nano-banana-2' if '2' in cfg['flow_model'] else cfg['flow_model'])
     # Only the channel host uses the fixed mascot image; story characters use their own Flow reference.
-    host = target.startswith(('ref:', 'register:')) and target.split(':')[1] == canonical_id(p)
+    host = target.startswith(('ref:', 'register:')) and target.split(':')[1] in canonical_ids(p)
     if registration:
         args = ['character', 'create', '--name', registration['name'], '--prompt', actual_prompt,
                 '--model', model_arg,
@@ -514,8 +514,10 @@ def batch_submit(p, j, units, registrations):
             p.event(j, 'images', 'flow_batch_ambiguous', key)
 
 
-def canonical_id(p):
-    return read(p.root / 'config.json').get('canonical_character', {}).get('id')
+def canonical_ids(p):
+    """Content character ids that mean the channel host (vocab scripts call it CH01, horror scripts channel-mascot)."""
+    host = read(p.root / 'config.json').get('canonical_character', {})
+    return set(host.get('content_ids', [host['id']] if host.get('id') else []))
 
 
 def media_id_of(p, j, journal):
@@ -534,8 +536,9 @@ def reference_prompt(c, char):
 
 
 def register(p, j, ref):
-    media = None if ref['character_id'] == canonical_id(p) else media_id_of(p, j, ref['request'])
-    if ref['character_id'] != canonical_id(p) and not media:
+    host = ref['character_id'] in canonical_ids(p)
+    media = None if host else media_id_of(p, j, ref['request'])
+    if not host and not media:
         raise Blocked('M2_REFERENCE_MEDIA: reference of ' + ref['character_id'] + ' has no Flow media id; reject and regenerate it')
     r = request(p, j, 'register:' + ref['character_id'] + ':' + ref['sha256'], ref['prompt'],
                 registration={'name': ref['name'], 'path': ref['path'], 'sha256': ref['sha256'], 'media_id': media})

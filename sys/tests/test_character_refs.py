@@ -144,7 +144,7 @@ class PipelineReferenceArgsTests(unittest.TestCase):
 
     def flags(self, host=None):
         # config.json is protected once a job exists, so the host id is patched instead of rewritten.
-        with patch('image_pipeline.canonical_id', return_value=host or HOST['id']):
+        with patch('image_pipeline.canonical_ids', return_value={host or HOST['id']}):
             self.finish()
         refs = [c for c in self.calls if c[0] == 'image' and '--character' not in c]
         regs = [c for c in self.calls if c[0] == 'character']

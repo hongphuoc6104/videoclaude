@@ -231,7 +231,7 @@ def make_brief(seed, cfg, choice):
             'prior_knowledge': cfg['prior_knowledge'],
             'pacing': f"{cfg['pacing']}. {mood['pacing']}",
             'domain_requirements': list(cfg['domain_requirements']) + [
-                f"Người dẫn chuyện: {host['name']} — {host['appearance']}; {host['outfit']}",
+                f"Người dẫn chuyện: {host['name']} (mã nhân vật {host['id']}) — {host['appearance']}; {host['outfit']}",
                 f"Thể loại: {seed['subgenre']}",
                 f"{MOOD_TAG}{mood_key} — {mood['label']}",
                 f"Ngôi kể: {pov['rule']}",

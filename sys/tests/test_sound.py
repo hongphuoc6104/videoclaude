@@ -72,14 +72,15 @@ class MixTests(unittest.TestCase):
 
     def test_bed_ducks_under_speech_and_never_clips(self):
         voice, spans = self.voice()
-        bed = sound.render_item(sound.library()['drone'], SR)
-        out = sound.mix(voice, SR, spans, bed)
-        under = out - voice
-        rms = lambda a, z: float(np.sqrt((under[int(a * SR):int(z * SR)] ** 2).mean()))
-        self.assertLess(rms(4, 6), rms(9, 10) * .5, 'bed is pulled down while someone speaks')
-        self.assertLess(rms(0, .1), rms(9, 10) * .2, 'bed fades in')
-        self.assertLessEqual(np.max(np.abs(out)), .97 + 1e-9)
-        self.assertEqual(len(out), len(voice))
+        bed = np.full(SR * 30, .2)  # constant level, so the measured gain is the ducking alone
+        under = sound.mix(voice, SR, spans, bed) - voice
+        level = lambda a, z: float(np.mean(under[int(a * SR):int(z * SR)]))
+        self.assertAlmostEqual(level(4, 6) / .2, sound.GAIN['bed_speech'], places=3)
+        self.assertAlmostEqual(level(9.2, 9.8) / .2, sound.GAIN['bed_gap'], places=3)
+        self.assertLess(level(0, .1), level(9.2, 9.8) * .1, 'bed fades in')
+        real = sound.mix(voice, SR, spans, sound.render_item(sound.library()['drone'], SR))
+        self.assertLessEqual(np.max(np.abs(real)), .97 + 1e-9)
+        self.assertEqual(len(real), len(voice))
 
     def test_effect_lands_on_its_anchor(self):
         voice, spans = self.voice()
@@ -143,6 +144,12 @@ class ContractTests(unittest.TestCase):
     def test_writer_sees_the_effect_menu_only_when_enabled(self):
         self.assertIn('knock:', sfx_note({'sound': {'bed': 'drone', 'sfx': True}}))
         self.assertIn('Không thêm trường sfx', sfx_note({}))
+
+    def test_render_timeout_grows_with_video_length(self):
+        import adapters
+        self.assertEqual(adapters.render_timeout({}, {'duration': 60, 'aspect_ratio': '9:16'}), 3600)
+        self.assertEqual(adapters.render_timeout({}, {'duration': 1200, 'aspect_ratio': '16:9'}), 6600)
+        self.assertEqual(adapters.render_timeout({'render_timeout_factor': 4}, {'duration': 1200, 'en_duration': 1300, 'aspect_ratio': 'dual'}), 10600)
 
     def test_renderer_plays_the_mixed_tracks(self):
         code = """import {outputPlans} from './renderer/outputs.mjs';

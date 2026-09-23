@@ -161,6 +161,14 @@ class HorrorLintTests(unittest.TestCase):
         with self.assertRaisesRegex(ContractError, 'SC01/images/IMG1'):
             self.lint('Một dãy trọ cuối hẻm.', ['Đà Lạt'])
 
+    def test_host_only_opens_and_closes(self):
+        three = {'scenes': [dict(content('Mở truyện.')['scenes'][0], id=f'SC0{i}', character_ids=chars)
+                            for i, chars in [(1, ['channel-mascot']), (2, ['lan']), (3, ['channel-mascot'])]]}
+        policy.lint(ROOT, 'job', self.brief, three)
+        three['scenes'][1]['character_ids'] = ['CH01']
+        with self.assertRaisesRegex(ContractError, 'HOST_SCENES'):
+            policy.lint(ROOT, 'job', self.brief, three)
+
     def test_non_bank_content_is_untouched(self):
         policy.lint(ROOT, 'job', {'planning': {'domain_requirements': []}}, content('Chuyện có thật ở Hà Nội.'))
 

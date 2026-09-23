@@ -47,6 +47,10 @@
   "render_concurrency": 4,
   "canonical_character": {
     "id": "channel-mascot",
+    "content_ids": [
+      "channel-mascot",
+      "CH01"
+    ],
     "name": "Người que áo xanh biển nhạt",
     "reference_path": "assets/characters/channel-mascot/reference-v1.png",
     "media_id": "de94a39b-155f-4afe-acbb-d9d4b59ad532",

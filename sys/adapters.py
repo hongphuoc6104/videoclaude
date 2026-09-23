@@ -559,6 +559,11 @@ def audio(p,j,out):
  if needs_en(p,j):payload['en']=english(p,j,out,cfg,content['scenes'])
  return payload
 
+def render_timeout(cfg,props):
+ # Long videos render slower than realtime (PC ~3x); scale the limit with every output's length.
+ seconds=props['duration']+(props.get('en_duration',0) if props.get('aspect_ratio')=='dual' else 0)
+ return max(3600,600+seconds*cfg.get('render_timeout_factor',5))
+
 def render(p,j,out):
  content=p.payload(j,'content');imgs=p.payload(j,'images');snd=p.payload(j,'audio')
  public=out/'public';public.mkdir(exist_ok=True);shutil.copy(p.path(j,snd['wav']),public/'narration.wav')
@@ -594,7 +599,7 @@ def render(p,j,out):
    props['audio_files'][language]=name
   write(out/'sound.json',{'license':sound.LICENSE,'plan':b['sound'],'items':list({x['id']:x for x in used}.values())})
  write(out/'props.json',props)
- r=subprocess.run(['node',str(p.root/'renderer/render.mjs'),str(out.resolve())],cwd=p.root,capture_output=True,text=True,timeout=3600);(out/'render.log').write_text(r.stdout+'\n'+r.stderr)
+ r=subprocess.run(['node',str(p.root/'renderer/render.mjs'),str(out.resolve())],cwd=p.root,capture_output=True,text=True,timeout=render_timeout(config(p),props));(out/'render.log').write_text(r.stdout+'\n'+r.stderr)
  if r.returncode:raise Blocked('Render or layout check failed; see render.log: '+r.stderr[-500:])
  result={'video':rel(p,j,out/'video.mp4'),'stills':[rel(p,j,out/(s['id']+'.png')) for s in scenes],'layout_report':rel(p,j,out/'layout.json'),'duration':en['duration'] if lang=='en' else snd['duration']}
  if (out/'video_16x9.mp4').exists():result['video_16x9']=rel(p,j,out/'video_16x9.mp4')

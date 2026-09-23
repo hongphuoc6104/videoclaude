@@ -3,11 +3,13 @@
 
 - check (brief_policies): truyện kinh dị phải rút từ kho horror/bank.py, không viết brief tay.
 - lint (content_policies): chặn lời dẫn/hình khẳng định chuyện có thật, hướng dẫn nghi lễ
-  làm theo được, máu me/tự hại, và địa danh có thật. Danh sách từ nằm trong
+  làm theo được, máu me/tự hại, địa danh có thật, và người dẫn chuyện (mascot) xuất hiện
+  giữa truyện. Danh sách từ nằm trong
   horror/channel.json (blocked_terms) để sửa không cần đụng mã.
 
 Bộ lọc từ khóa chỉ là lưới an toàn thô; duyệt nội dung vẫn phải đọc toàn bộ kịch bản.
 """
+import json
 import re
 import sys
 from pathlib import Path
@@ -96,6 +98,15 @@ def lint(root, job, brief, content):
                 hits = find_terms(text, terms.get(key, []), case)
                 if hits:
                     errors.append(error(code, f"{scene['id']}/{where}", f"{message}: {', '.join(hits)}", fix))
+    # The host (canonical mascot) only opens and closes; a story character must never carry a host id.
+    host = set(json.loads((root / 'config.json').read_text()).get('canonical_character', {}).get('content_ids', []))
+    ends = {content['scenes'][0]['id'], content['scenes'][-1]['id']} if content['scenes'] else set()
+    for scene in content['scenes']:
+        used = set(scene.get('character_ids', [])) | {c for im in scene.get('images', []) for c in im.get('character_ids', [])}
+        if scene['id'] not in ends and used & host:
+            errors.append(error('HOST_SCENES', scene['id'], 'Người dẫn chuyện (mascot) xuất hiện giữa truyện',
+                                'Chỉ đưa người dẫn chuyện vào cảnh đầu và cảnh cuối; nhân vật truyện dùng mã riêng, không dùng '
+                                + ', '.join(sorted(host)) + '.'))
     if errors:
         raise ContractError(errors)
 

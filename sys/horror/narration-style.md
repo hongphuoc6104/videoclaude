@@ -63,7 +63,7 @@ The narration is heard, not read, in one deep male Vietnamese TTS voice at a slo
 
 ## Images for horror scenes
 
-- The host appears only in images of the first and last scene. List the host in those scenes' `character_ids`, and nowhere else.
+- Declare the host as a character with id `channel-mascot`. The host appears only in images of the first and last scene: list it in those scenes' `character_ids` and nowhere else. Never give `channel-mascot` or `CH01` to a story character; those ids always draw the mascot.
 - Story scenes use the story's own characters, declared in `characters` with a full `appearance` and `outfit` (face, age, hair, build, clothes). Those two fields are the only thing that keeps a character the same across images, so write them precisely.
 - Compose with darkness, one warm light source, silhouettes, partial views and empty space. Show the threat partly: a shadow, a hand, an outline. Never show gore, blood or a corpse.
 - `visible_text` is almost always empty. Do not draw signs with real place names.
