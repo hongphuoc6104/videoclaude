@@ -125,6 +125,9 @@ export async function verifyBrowser(browser, config, keepPage=false, local=machi
 }
 export async function inspect(config, sharedBrowser=null, bound=null) {
   config={...config,...machineConfig};
+  // After a quota switch the bound tab belongs to another profile of the same data dir.
+  if(bound?.profile) config.flow_profile_directory=bound.profile;
+  const expectedTool=bound?.toolUrl || toolUrl;
   const selected=browserConfig(config, {});
   const file=path.join(selected.dataDir,'DevToolsActivePort');
   if(!fs.existsSync(file)) return {status:'blocked',reason:'PROJECT_CHROME_CDP_UNAVAILABLE',...selected,generationSubmitted:false};
@@ -141,10 +144,10 @@ export async function inspect(config, sharedBrowser=null, bound=null) {
     const executable=bound?.identity.executable || (await probe.locator('#executable_path').innerText()).trim();
     if(path.resolve(observedProfile)!==selected.expectedProfilePath) return {status:'blocked',reason:'PROFILE_PATH_MISMATCH',...selected,observedProfile,executable,generationSubmitted:false};
     if(executable!==(config.executable_path || '/opt/google/chrome/google-chrome')) return {status:'blocked',reason:'GOOGLE_CHROME_REQUIRED',executable,generationSubmitted:false};
-    if(['chrome://version','chrome://version/'].includes(probe.url())) await probe.goto(toolUrl,{waitUntil:'domcontentloaded',timeout:20000});
-    else if(probe.url()!==toolUrl) {
+    if(['chrome://version','chrome://version/'].includes(probe.url())) await probe.goto(expectedTool,{waitUntil:'domcontentloaded',timeout:20000});
+    else if(probe.url()!==expectedTool) {
       if (probe.url().startsWith('https://flow.google.com/project/')) {
-        await probe.goto(toolUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+        await probe.goto(expectedTool, { waitUntil: 'domcontentloaded', timeout: 20000 });
       } else {
         throw Error('BOUND_TAB_NAVIGATED: refusing to discard tool state');
       }
@@ -162,7 +165,7 @@ export async function inspect(config, sharedBrowser=null, bound=null) {
     const folder=safeResults();
     const screenshot=path.join(folder,`inspect-${Date.now()}.png`);
     await fastScreenshot(probe, screenshot);
-    return {status:!readinessError && probe.url().startsWith(toolUrl)?'inspected':'blocked',reason:readinessError || (probe.url().startsWith(toolUrl)?null:'TOOL_NOT_REACHED'),
+    return {status:!readinessError && probe.url().startsWith(expectedTool)?'inspected':'blocked',reason:readinessError || (probe.url().startsWith(expectedTool)?null:'TOOL_NOT_REACHED'),
       observedAt:new Date().toISOString(),...selected,observedProfile,executable,url:probe.url(),snapshot,frames,screenshot,
       accountVerified:false,costVerified:false,generationSubmitted:false};
   } finally {if(probe && !bound) await probe.close().catch(()=>{}); if(browser && !sharedBrowser) await browser.close();}

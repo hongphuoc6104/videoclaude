@@ -1,5 +1,6 @@
 """Who each Flow image is drawn from: the channel host (mascot), a story character's own reference, or nobody.
 Flow is faked; nothing is submitted."""
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -206,6 +207,27 @@ class SessionCheckTests(unittest.TestCase):
                      patch('b2_bridge.send_raw_command', return_value={'items': [None], 'failures': reply['failures'][:1]}):
                     b2_bridge.generate_b2_image('p', no_character=True, out_dir=out, test_case='a')
             self.assertIsNot(getattr(ctx.exception, 'generation_submitted', True), False, 'sent, so unknown')
+
+    def test_retry_safe_failures_are_marked_not_submitted_and_switches_are_kept_with_the_run(self):
+        out = Path(tempfile.mkdtemp())
+        batch = out / 'batch'
+        reply = {'items': [None, None],
+                 'failures': [{'index': 0, 'request_id': 'a', 'reason': 'FLOW_NOT_SUBMITTED: FLOW_QUOTA_ALL_PROFILES_EXHAUSTED: none left'},
+                              {'index': 1, 'request_id': 'b', 'reason': 'FLOW_NO_MEDIA: Expected object response with media fields'}],
+                 'profileSwitches': [{'event': 'switch', 'from': 'Profile 10', 'to': 'Profile 102'}]}
+        specs = [{'testCase': 'a', 'outDir': str(batch / 'a')}, {'testCase': 'b', 'outDir': str(batch / 'b')}]
+        with patch('b2_bridge.require_queue_acceptance'), patch('b2_bridge.ensure_connected'), \
+             patch('b2_bridge.send_raw_command', return_value=reply):
+            items = b2_bridge.generate_b2_batch(specs)
+            self.assertIs(items[0].get('not_submitted'), True)
+            self.assertNotIn('not_submitted', items[1], 'a no-media answer keeps its own one-retry rule')
+            self.assertEqual(json.loads((batch / 'profile-switches.json').read_text())[0]['to'], 'Profile 102')
+            single = {'items': [None], 'failures': reply['failures'][:1]}
+            with patch('b2_bridge.queue_spec', return_value=specs[0]), \
+                 patch('b2_bridge.send_raw_command', return_value=single):
+                with self.assertRaisesRegex(Blocked, 'ALL_PROFILES_EXHAUSTED') as ctx:
+                    b2_bridge.generate_b2_image('p', no_character=True, out_dir=out, test_case='a')
+            self.assertIs(ctx.exception.generation_submitted, False)
 
     def test_a_timeout_during_a_queue_command_stays_unknown(self):
         with patch('b2_bridge.require_queue_acceptance'), patch('b2_bridge.ensure_connected'), \

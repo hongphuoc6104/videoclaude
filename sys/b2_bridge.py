@@ -169,8 +169,26 @@ def generate_b2_image(
         error = Blocked(item["failed"])  # sent to Flow: unknown, unless Flow answered with no image
         if item["failed"].startswith("FLOW_NO_MEDIA"):
             error.outcome = "no_media"
+        if item.get("not_submitted"):
+            error.generation_submitted = False  # journal proves no image exists for this request: may be sent again
         raise error
     return item
+
+
+# Queue failures whose journal proves no image exists for the request, so a later call may send it again:
+# never dispatched (FLOW_NOT_SUBMITTED), or every profile answered "out of quota" with no image (FLOW_QUOTA_NO_MEDIA).
+RETRY_SAFE = ("FLOW_NOT_SUBMITTED", "FLOW_QUOTA_NO_MEDIA")
+
+
+def record_profile_switches(specs: list[dict], switches: list[dict]) -> None:
+    """Keep the queue's profile switches next to the run's own batch records, so each switch is auditable there too."""
+    if not switches:
+        return
+    folder = Path(specs[0]["outDir"]).parent
+    folder.mkdir(parents=True, exist_ok=True)
+    log = folder / "profile-switches.json"
+    earlier = json.loads(log.read_text(encoding="utf-8")) if log.is_file() else []
+    log.write_text(json.dumps(earlier + switches, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def generate_b2_batch(specs: list[dict], timeout: float = 240.0) -> list[dict]:
@@ -194,11 +212,13 @@ def generate_b2_batch(specs: list[dict], timeout: float = 240.0) -> list[dict]:
         raise Blocked("B-2 incomplete batch; reconcile before retry")
     # One entry per spec, in order. A request Flow did not return is {"failed": reason}; the others stand.
     reasons = {x["index"]: x["reason"] for x in result.get("failures", [])}
+    record_profile_switches(specs, result.get("profileSwitches", []))
     out = []
     for i, (spec, item) in enumerate(zip(specs, items)):
         if item is None:
-            out.append({"failed": reasons.get(i, "B-2 request unresolved; reconcile before retry"),
-                        "request_id": spec["testCase"]})
+            reason = reasons.get(i, "B-2 request unresolved; reconcile before retry")
+            out.append({"failed": reason, "request_id": spec["testCase"],
+                        **({"not_submitted": True} if reason.startswith(RETRY_SAFE) else {})})
             continue
         if item.get("request_id") != spec["testCase"] or not Path(item["path"]).is_file():
             raise Blocked("B-2 result mapping failed")

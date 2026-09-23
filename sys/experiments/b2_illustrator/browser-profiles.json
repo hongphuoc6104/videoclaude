@@ -11,5 +11,32 @@
   ],
   "source": "user-confirmed paths",
   "authentication_verified": false,
-  "automatic_account_switching": false
+  "rotation_note": "On an out-of-quota answer (Flow error with no image) the queue records the profile in results/controller/profile-exhaustion.json until the next local midnight (or quota_reset_hours) and continues on the next profile in priority that has a tool_url. CAPTCHA, sign-in, storage and unknown errors still stop the queue. Every decision is appended to results/controller/profile-switches.ndjson. machine.local.json overrides these keys.",
+  "profiles": {
+    "Profile 10": {
+      "note": "Home profile: owns the Flow project, the VP Stickman Lab tool (tool_url in machine.local.json) and the registered mascot media de94a39b-155f-4afe-acbb-d9d4b59ad532."
+    },
+    "Profile 102": {
+      "note": "Rotation candidate, not verified in Flow. Needs tool_url (this account's own copy of the tool) and either media_ids {home id: this account's id} or reference_media \"shared\" before it can take images with references.",
+      "tool_url": null,
+      "reference_media": "own",
+      "media_ids": {}
+    },
+    "Profile 13": {
+      "note": "Rotation candidate, not verified in Flow. Same requirements as Profile 102.",
+      "tool_url": null,
+      "reference_media": "own",
+      "media_ids": {}
+    },
+    "Profile 14": {
+      "note": "Rotation candidate, not verified in Flow. Same requirements as Profile 102. Absent from the .gflow/profiles/video-pilot data dir: usable only when the session runs on a data dir that contains it.",
+      "tool_url": null,
+      "reference_media": "own",
+      "media_ids": {}
+    }
+  },
+  "failure_patterns": {
+    "quota": []
+  },
+  "automatic_account_switching": true
 }

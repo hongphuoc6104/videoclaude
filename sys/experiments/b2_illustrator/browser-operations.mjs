@@ -14,7 +14,7 @@ export async function runOperation(command, bound) {
   if(command === 'tool-snapshot:queue-state') {
     // Read-only: queue item states and how much of the tool's localStorage the saved state uses. Clicks nothing.
     const page=bound?.page;
-    if(!page || page.isClosed() || !page.url().startsWith(toolUrl)) throw Error('BOUND_TAB_UNAVAILABLE');
+    if(!page || page.isClosed() || !page.url().startsWith(bound.toolUrl||toolUrl)) throw Error('BOUND_TAB_UNAVAILABLE');
     const frame=await findToolFrame(page);
     const state=await frame.evaluate(()=>{
       const raw=localStorage.getItem('VP_LAB_STATE_V2')||'{}', s=JSON.parse(raw);
@@ -23,18 +23,18 @@ export async function runOperation(command, bound) {
         items:(s.queue||[]).map(i=>({id:i.id,status:i.status,mediaId:i.mediaId||null,error:i.error||i.errorMessage||null,
           resultChars:(i.result?.base64||'').length,topic:(i.config?.topic||'').slice(-60)}))};
     });
-    return {...state,generationSubmitted:false};
+    return {...state,profile:bound.profile||null,generationSubmitted:false};
   }
   if(command.startsWith('tool-snapshot:queue-release:')) {
     // Operator decision in a file: {"queueIds":[...],"reason":"..."}. Only items our journal shows as sent and never
     // collected may be released; everything else in the tool state must already be on disk. Backs up, then resets.
     const page=bound?.page;
-    if(!page || page.isClosed() || !page.url().startsWith(toolUrl)) throw Error('BOUND_TAB_UNAVAILABLE');
+    if(!page || page.isClosed() || !page.url().startsWith(bound.toolUrl||toolUrl)) throw Error('BOUND_TAB_UNAVAILABLE');
     const order=JSON.parse(fs.readFileSync(command.slice('tool-snapshot:queue-release:'.length),'utf8'));
     if(!Array.isArray(order.queueIds)||!order.queueIds.length||!String(order.reason||'').trim())throw Error('RELEASE_NEEDS_QUEUE_IDS_AND_REASON');
     const {resetToolState}=await import('./queue-runner.mjs?revision='+Date.now());
     const {AttemptStore}=await import('./attempt-store.mjs');
-    await resetToolState(page,new AttemptStore(path.join(safeResults(),'production-attempts')),{release:order.queueIds,reason:order.reason});
+    await resetToolState(page,new AttemptStore(path.join(safeResults(),'production-attempts')),{release:order.queueIds,reason:order.reason,profile:bound.profile||null});
     return {status:'released',queueIds:order.queueIds,generationSubmitted:false};
   }
   if(command==='tool-snapshot:share-copy') {
@@ -129,7 +129,7 @@ export async function runOperation(command, bound) {
 
   if(['tool-snapshot:repair-queue','tool-snapshot:repair-queue-02'].includes(command)) {
     const page=bound?.page;
-    if(!page || page.isClosed() || !page.url().startsWith(toolUrl)) throw Error('BOUND_TAB_UNAVAILABLE');
+    if(!page || page.isClosed() || !page.url().startsWith(bound.toolUrl||toolUrl)) throw Error('BOUND_TAB_UNAVAILABLE');
     const audit=path.join(safeResults(),command.endsWith('-02') ? 'queue-repair-02.json' : 'queue-repair-01.json');
     if(fs.existsSync(audit)) throw Error('REPAIR_ALREADY_SUBMITTED');
     await page.getByRole('radio',{name:'Edit',exact:true}).click();
@@ -141,7 +141,7 @@ export async function runOperation(command, bound) {
   }
   if(command === 'tool-snapshot:read-only') {
     const page=bound?.page;
-    if(!page || page.isClosed() || !page.url().startsWith(toolUrl)) throw Error('BOUND_TAB_UNAVAILABLE');
+    if(!page || page.isClosed() || !page.url().startsWith(bound.toolUrl||toolUrl)) throw Error('BOUND_TAB_UNAVAILABLE');
     await page.getByRole('radio',{name:'Tool',exact:true}).click();
     const frames=[];
     for(const f of page.frames()) {
@@ -153,7 +153,7 @@ export async function runOperation(command, bound) {
   }
   if(command === 'tool-snapshot:upgrade-queue') {
     const page=bound?.page;
-    if(!page || page.isClosed() || !page.url().startsWith(toolUrl)) throw Error('BOUND_TAB_UNAVAILABLE');
+    if(!page || page.isClosed() || !page.url().startsWith(bound.toolUrl||toolUrl)) throw Error('BOUND_TAB_UNAVAILABLE');
     const prompt=`Upgrade this existing experimental still-image tool for measurable parallel generation. Preserve every existing control, model, references, journal, single-image button accessible name Initialize Generation, and existing saved results. Do not generate any images automatically. Add separate outputs-per-request and concurrent-requests controls, both default 1. Only expose native output counts supported by the actual Flow SDK; otherwise show output count 1 with an honest unsupported explanation, never fake a batch with multiple SDK calls. Add a queue accepting independent prompt items, each immutable snapshot with sceneId, beatId, ratio, config and actual character/base mediaIds. Concurrency selectable 1,2,3,4 with default 1. Each worker uses its own immutable snapshot, never shared mutable form state. based_on items wait for an explicitly accepted parent and its real mediaId. Persist request ID and submitting status BEFORE SDK call, persist returned mediaId immediately BEFORE image dimension measurement or downloads. Any ambiguous error becomes UNKNOWN and blocks further dispatch; never retry generation automatically or clear unresolved state. On authentication, CAPTCHA, quota, rate-limit or persistence errors pause queue. Downloads may retry only an existing mediaId. Add enqueue-current-input and explicit Start Queue buttons. Track monotonic timestamps for prepare, submit, first result, all results, validation and download separately. Display outputs linked to their request IDs and export all metadata as UTF8 JSON. Keep generation image-only, model Nano Banana Pro selectable, correct references and 9:16. Never claim zero cost without real billing evidence. Do not publish. Implement code only and wait for manual testing.`;
     const audit=path.join(safeResults(),'queue-upgrade-submitted.json');
     if(fs.existsSync(audit)) throw Error('UPGRADE_ALREADY_SUBMITTED: inspect instead of resending');
@@ -189,11 +189,12 @@ export async function runOperation(command, bound) {
   }
   const page = bound?.page;
   if (!page || page.isClosed()) throw Error('BOUND_TAB_UNAVAILABLE');
-  if (!page.url().startsWith(toolUrl)) {
+  const boundTool = bound.toolUrl || toolUrl;
+  if (!page.url().startsWith(boundTool)) {
     if (page.url().startsWith('https://flow.google.com/project/')) {
-      await page.goto(toolUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+      await page.goto(boundTool, { waitUntil: 'domcontentloaded', timeout: 20000 });
     } else {
-      throw Error(`BOUND_TAB_NAVIGATED: expected ${toolUrl}, got ${page.url()}`);
+      throw Error(`BOUND_TAB_NAVIGATED: expected ${boundTool}, got ${page.url()}`);
     }
   }
 

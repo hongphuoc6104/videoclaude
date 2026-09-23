@@ -50,3 +50,20 @@ or claim of Antigravity handshake has been made.
 The session currently supports connection/inspection commands only. It does not
 submit editor changes, generate images, collect results or run batches. Updating
 session command handlers requires restarting the service and a new Chrome consent.
+
+## Storage budget and profile rotation (2026-09-24)
+
+- queue-runner measures the tool origin's whole localStorage before each dispatch and sends only
+  as many images as fit under 80 % of 5,242,880 chars (estimate: max(360,000, 1.15 x largest item)).
+  When the rest does not fit it collects the finished chunk to disk, then compacts (backup in
+  `results/controller/tool-state/`), exactly under the old `toolStateBlockers` rule.
+- "Persistence failure after result" is a storage failure (image generated, not saved): never a
+  no-media retry; it blocks compaction until reconciled.
+- Out of quota (Flow error, no image; patterns in `profile-rotation.mjs`, extendable through
+  `failure_patterns.quota`): the attempt is journaled `failed_no_media` with evidence, the profile is
+  recorded in `results/controller/profile-exhaustion.json` until next local midnight, and, when
+  `automatic_account_switching` is true, the unanswered requests are resent (new attempt,
+  `identity.resend`) on the next profile in `priority` that has a `tool_url`. Every decision is
+  appended to `results/controller/profile-switches.ndjson`. CAPTCHA, sign-in, storage and unknown
+  errors still stop the queue; the switch never signs in or types anything.
+- queue-runner is cached in the session process: restart the session to load these changes.

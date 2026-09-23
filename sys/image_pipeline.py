@@ -501,6 +501,8 @@ def batch_submit(p, j, units, registrations, bases=None):
                   'args': job, 'journal': str(record.relative_to(p.job(j)))}
         if entry['status'] == 'failed':
             error = entry.get('error', 'batch job failed')
+            if str(error).startswith(('FLOW_NOT_SUBMITTED', 'FLOW_QUOTA_NO_MEDIA')):
+                continue  # the queue journal proves no image exists (never dispatched, or out of quota): retry normally
             result.update(state='failed_no_media' if no_media(error) else 'ambiguous', error=error)
             write(record, result)
             p.event(j, 'images', 'flow_batch_' + result['state'], key)

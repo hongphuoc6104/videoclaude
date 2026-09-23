@@ -17,6 +17,9 @@ export const STATES = Object.freeze([
   'generated',
   'collected',
   'accepted',
+  // Flow answered with an error and no image: the tool item holds no media id and no result.
+  // Nothing was produced, so a successor attempt may be sent (see recordNoMedia).
+  'failed_no_media',
 ]);
 
 const TERMINAL_STATES = new Set(['accepted']);
@@ -230,7 +233,7 @@ export class AttemptStore {
       state: last.state,
       request: clone(prepared?.request),
       mediaId: generated?.mediaId ?? null,
-      generationSubmitted: events.some((event) => ['submitting', 'unknown', 'generated', 'collected', 'accepted'].includes(event.state)),
+      generationSubmitted: events.some((event) => ['submitting', 'unknown', 'generated', 'collected', 'accepted', 'failed_no_media'].includes(event.state)),
       createdAt: events[0].at,
       updatedAt: last.at,
       events: clone(events),
@@ -300,6 +303,7 @@ export class AttemptStore {
         generated: new Set(['submitting', 'unknown']),
         collected: new Set(['generated']),
         accepted: new Set(['collected']),
+        failed_no_media: new Set(['submitting', 'unknown']),
       };
       if (!allowed[target]?.has(from)) {
         if (target === 'generated' && from === 'generated' && payload.mediaId === current.mediaId) return current;
@@ -308,6 +312,13 @@ export class AttemptStore {
         throw fail(`Cannot transition ${from} -> ${target}`, from === 'unknown' ? 'UNKNOWN_SUBMISSION' : 'INVALID_TRANSITION');
       }
       if(target==='generated' && from==='unknown' && !payload.reconciliationEvidence)throw fail('Reconciliation evidence required','EVIDENCE_REQUIRED');
+      if(target==='failed_no_media') {
+        // Proof that nothing was produced: the tool's own record of this queue item, with an error and no media.
+        const evidence=payload.evidence;
+        if(!evidence || !evidence.queueId || !String(evidence.error||'').trim() || evidence.mediaId || evidence.hasResult)
+          throw fail('No-media evidence required: queueId and error, without media id or result','EVIDENCE_REQUIRED');
+        if(current.mediaId)throw fail('A generated attempt cannot become no-media','MEDIA_ID_MISMATCH');
+      }
       if (target === 'generated') {
         if (typeof payload.mediaId !== 'string' || !payload.mediaId.trim()) throw fail('mediaId required for generated state', 'MEDIA_ID_REQUIRED');
         if (current.mediaId && current.mediaId !== payload.mediaId) throw fail('mediaId cannot change', 'MEDIA_ID_MISMATCH');
@@ -326,6 +337,8 @@ export class AttemptStore {
     return this._transition(input, 'generated', {mediaId, ...(isPlainObject(result) ? result : {})});
   }
   markGenerated(input, result) { return this.recordGenerated(input, result); }
+  /** Flow answered without an image. `evidence` = {queueId, error, classification, profile, ...}. */
+  recordNoMedia(input, evidence) { return this._transition(input, 'failed_no_media', {evidence: clone(evidence)}); }
   recordCollected(input, metadata = {}) { return this._transition(input, 'collected', {collection: clone(metadata)}); }
   markCollected(input, metadata = {}) { return this.recordCollected(input, metadata); }
   recordAccepted(input, metadata = {}) { return this._transition(input, 'accepted', {acceptance: clone(metadata)}); }

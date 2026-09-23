@@ -627,6 +627,65 @@ class ImagesV2Tests(unittest.TestCase):
         # SC02's failure left no downloaded artifact behind for it to steal.
         self.assertNotIn('path', sc02)
 
+    def test_flow_batch_retry_safe_failure_is_not_ambiguous(self):
+        # The queue reports a request its journal proves has no image (never dispatched, or every
+        # profile answered out of quota). The batch leaves it unjournaled; the one-image path then
+        # finds the queue still refusing before any dispatch and records not_submitted, never
+        # ambiguous, so a later run may send it without a manual reconcile.
+        from pilot import read as real_read
+        units = [{'id': f'SC0{n}_I1', 'scene_id': f'SC0{n}', 'ratio': '9:16', 'based_on': None,
+                  'prompt': f'SC0{n} image 1', 'character_ids': [], 'visible_text': []} for n in (1, 2)]
+        synthetic_content = {'schema_version': '2.0', 'characters': [], 'scenes': [{'id': 'SC01'}, {'id': 'SC02'}]}
+        real_brief, real_rev, real_hash = self.p.brief(self.j)
+        dual_brief = (dict(real_brief, aspect_ratio='dual', scene_count=2), real_rev, real_hash)
+
+        def read_with_batch_flag(path):
+            d = real_read(path)
+            if isinstance(d, dict) and str(path).endswith('config.json') and 'flow_model' in d:
+                d = dict(d, flow_batch=True)
+            return d
+
+        calls = []
+        def fake_gflow(p, *args, **kw):
+            calls.append(args[0])
+            if args[0] == 'image':
+                error = Blocked('FLOW_QUOTA_ALL_PROFILES_EXHAUSTED: no configured profile left')
+                error.generation_submitted = False
+                raise error
+            out_dir = Path(args[args.index('--out') + 1])
+            records = []
+            for job in read(Path(args[1]))['jobs']:
+                if 'SC02' in job['prompt']:
+                    records.append({'id': job['id'], 'status': 'failed',
+                                    'error': 'FLOW_NOT_SUBMITTED: FLOW_QUOTA_ALL_PROFILES_EXHAUSTED: no configured profile left'})
+                    continue
+                evidence_dir = out_dir / '.evidence' / job['id']; evidence_dir.mkdir(parents=True, exist_ok=True)
+                write(evidence_dir / 'ui-proof.json', {'passed': True, 'mode': 'image', 'characters': []})
+                Image.new('RGB', (30, 30)).save(evidence_dir / 'before-submit.png')
+                asset = out_dir / (job['id'] + '-1.png')
+                Image.new('RGB', (720, 1280)).save(asset)
+                write(asset.with_suffix('.json'), {'jobId': job['id'], 'type': 'image', 'prompt': job['prompt'],
+                      'ratio': job['ratio'], 'characters': [], 'source': 'google-flow-browser', 'status': 'downloaded'})
+                records.append({'id': job['id'], 'status': 'completed', 'artifacts': [str(asset)]})
+            write(out_dir / 'gflow-run.json', {'source': 'google-flow-browser', 'jobs': records})
+            return SimpleNamespace(returncode=0, stdout='BATCH TEST', stderr='')
+
+        with patch('image_pipeline.content', return_value=synthetic_content), \
+             patch('image_pipeline.planned_units', return_value=units), \
+             patch.object(self.p, 'brief', return_value=dual_brief), \
+             patch('image_pipeline.read', side_effect=read_with_batch_flag), \
+             patch('adapters.gflow', side_effect=fake_gflow):
+            self.p.run(self.j, 'images')
+            self.approve('references')
+            out_dir = self.p.job(self.j) / 'manual-retry-safe-out'; out_dir.mkdir()
+            with self.assertRaisesRegex(Blocked, 'ALL_PROFILES_EXHAUSTED'):
+                ip.produce(self.p, self.j, out_dir)
+
+        self.assertEqual(calls, ['batch', 'image'])
+        self.assertEqual(self._journal_for('SC01_I1')['state'], 'downloaded')
+        self.assertEqual(self._journal_for('SC02_I1')['state'], 'not_submitted')
+        self.assertIsNone(ip._unresolved_conflict(self.p, self.j, 'SC02_I1'), 'no manual reconcile needed')
+
     def test_wrapper_rejects_video_without_browser(self):
         # Assert the policy code, not the prose: the allowed-command list grows
         # (auth login joined it) while M2_POLICY is the stable contract.

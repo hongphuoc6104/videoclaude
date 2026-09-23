@@ -2,9 +2,11 @@
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
+import crypto from 'node:crypto';
+import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
-import {browserConfig,debugEndpoint,inspect,safeResults,toolUrl,verifyBrowser} from './controller.mjs';
+import {browserConfig,debugEndpoint,findToolFrame,inspect,machineConfig,safeResults,toolUrl,verifyBrowser} from './controller.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url));
 const socketPath=path.join(here,'results','controller','session.sock');
 
@@ -21,6 +23,56 @@ export class Session {
   status(){return {status:this.browser?.isConnected()?'connected':this.attempted?'disconnected':'not_connected'};}
   async stop(){if(this.browser) await this.browser.close();this.browser=null;this.identity=null;}
 }
+/** Ask the running Chrome (same user-data-dir, so the same process) to open a window in `profile`. */
+function launchChrome(executable,args){
+  const child=spawn(executable,args,{detached:true,stdio:'ignore'});
+  child.on('error',()=>{});child.unref();
+}
+
+/** A sign-in page or a visible CAPTCHA challenge on the tab: both are hard stops, never worked around. */
+export async function signInOrCaptcha(page){
+  const url=page.url();
+  if(/^https:\/\/accounts\.google\.com\//.test(url)||/ServiceLogin|\/signin[/?]/i.test(url))return `FLOW_SIGN_IN_REQUIRED: ${url.split('?')[0]}`;
+  for(const frame of page.frames()){
+    if(!/\/recaptcha\/.*\/bframe/.test(frame.url()))continue;
+    try {if(await (await frame.frameElement()).isVisible())return 'FLOW_CAPTCHA_REQUIRED: challenge visible';} catch {}
+  }
+  return null;
+}
+
+/**
+ * Open the tool in another Chrome profile of the same user-data-dir and bind that tab.
+ * Chrome forwards the command line to the running process, which opens a new window in the
+ * profile; the tab is found by a one-time marker, then its profile path and executable are
+ * checked on chrome://version exactly like the first connection. It never signs in, never
+ * types anything and never closes the previous profile's tab (its tool state stays for
+ * reconciliation).
+ */
+export async function openProfileTab({browser,dataDir,profile,executable,url,launch=launchChrome,findFrame=findToolFrame,timeoutMs=30000,pollMs=250,exists=fs.existsSync}){
+  if(path.basename(profile)!==profile||profile==='.'||profile==='..')throw Error('Invalid profile directory');
+  if(!url)throw Error(`PROFILE_TOOL_URL_MISSING: ${profile}`);
+  // Chrome would silently create a new, signed-out profile for an unknown directory.
+  if(!exists(path.join(dataDir,profile)))throw Error(`PROFILE_NOT_FOUND: ${path.join(dataDir,profile)}`);
+  const nonce=crypto.randomUUID();
+  launch(executable,[`--user-data-dir=${dataDir}`,`--profile-directory=${profile}`,`chrome://version/?vp-switch=${nonce}`]);
+  const deadline=Date.now()+timeoutMs;let page=null;
+  while(!page&&Date.now()<deadline){
+    page=browser.contexts().flatMap(c=>c.pages()).find(p=>p.url().includes(nonce))||null;
+    if(!page)await new Promise(resolve=>setTimeout(resolve,pollMs));
+  }
+  if(!page)throw Error(`PROFILE_SWITCH_TAB_NOT_FOUND: ${profile}`);
+  const observedProfile=(await page.locator('#profile_path').innerText()).trim();
+  const observedExecutable=(await page.locator('#executable_path').innerText()).trim();
+  if(path.resolve(observedProfile)!==path.join(dataDir,profile))throw Error(`PROFILE_PATH_MISMATCH: expected ${profile}, got ${observedProfile}`);
+  if(observedExecutable!==executable)throw Error('EXECUTABLE_PATH_MISMATCH');
+  await page.goto(url,{waitUntil:'domcontentloaded',timeout:30000});
+  const blocked=await signInOrCaptcha(page);
+  if(blocked)throw Error(blocked);
+  try {await findFrame(page);}
+  catch(error){throw Error((await signInOrCaptcha(page))||`TOOL_NOT_READY_ON_PROFILE: ${profile}: ${error.message}`);}
+  return {identity:{observedProfile,executable:observedExecutable,verifiedAt:new Date().toISOString()},page,profile,toolUrl:url};
+}
+
 async function serve(){
   safeResults();
   if(fs.existsSync(socketPath)) throw Error('Session socket exists: use status; do not start a second session');
@@ -37,10 +89,19 @@ async function serve(){
       if(bound.page.isClosed()) throw Error('BOUND_TAB_CLOSED');
       return bound.identity;
     }
-    bound=await verifyBrowser(browser,config,true);
+    bound={...await verifyBrowser(browser,config,true),profile:selected.profile,toolUrl,switchProfile};
     if(bound.page.isClosed())throw Error('BOUND_TAB_CLOSED');
     return bound.identity;
   });
+  // Used by queue-runner only after Flow answered "out of quota" and rotation is enabled.
+  const switchProfile=async(target,url)=>{
+    if(!session.browser?.isConnected())throw Error('SESSION_DISCONNECTED');
+    const next=await openProfileTab({browser:session.browser,dataDir:selected.dataDir,profile:target,url,
+      executable:{...config,...machineConfig}.executable_path||'/opt/google/chrome/google-chrome'});
+    bound={...next,switchProfile};
+    console.log(JSON.stringify({event:'profile_switched',profile:target,at:new Date().toISOString()}));
+    return bound;
+  };
   const ensureBoundPage=async()=>{
     if(bound?.page && !bound.page.isClosed()) return bound;
     throw Error('BOUND_TAB_CLOSED: reconnect and verify the configured profile; do not replace the tab silently');
@@ -63,9 +124,10 @@ async function serve(){
           if(command==='connect') {
             result=await session.start();
             await ensureBoundPage();
-            if(bound?.page && !bound.page.url().startsWith(toolUrl)) {
-              await bound.page.goto(toolUrl,{waitUntil:'domcontentloaded',timeout:30000});
+            if(bound?.page && !bound.page.url().startsWith(bound.toolUrl||toolUrl)) {
+              await bound.page.goto(bound.toolUrl||toolUrl,{waitUntil:'domcontentloaded',timeout:30000});
             }
+            result={...result,profile:bound?.profile||null};
           }
           else if(command==='inspect') {
             if(session.status().status!=='connected') throw Error('CONNECT_FIRST: session unavailable');
