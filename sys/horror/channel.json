@@ -56,6 +56,28 @@
       "choices_from": "bank",
       "auto_label": "Tự lấy truyện kế tiếp trong kho"
     },
+    "mood": {
+      "question": "Không khí truyện theo kiểu nào?",
+      "flag": "--mood",
+      "choices_from": "moods",
+      "seed_label": "Theo gợi ý của truyện đã chọn"
+    },
+    "pov": {
+      "question": "Ai kể truyện?",
+      "flag": "--pov",
+      "choices": [
+        {
+          "value": "third",
+          "label": "Ngôi thứ ba — người dẫn chuyện kể lại chuyện của nhân vật",
+          "rule": "Kể ngôi thứ ba, bám sát một nhân vật chính: chỉ biết điều nhân vật đó thấy, nghe, nghĩ. Người dẫn chuyện mở ở cảnh đầu và khép ở cảnh cuối."
+        },
+        {
+          "value": "first",
+          "label": "Ngôi thứ nhất — nhân vật chính tự kể (người dẫn chuyện mở và khép)",
+          "rule": "Người dẫn chuyện mở ở cảnh đầu, giới thiệu người kể rồi nhường lời. Từ cảnh thứ hai tới cảnh áp chót, nhân vật chính xưng \"tôi\" kể lại chuyện của mình. Cảnh cuối người dẫn chuyện nói lại."
+        }
+      ]
+    },
     "mode": {
       "question": "Duyệt từng phần (review) hay để máy tự duyệt (auto)?",
       "flag": "--mode",
@@ -69,6 +91,32 @@
           "label": "auto — máy tự đánh giá và chạy tới video"
         }
       ]
+    }
+  },
+  "moods": {
+    "slow_burn": {
+      "label": "Rợn chậm — không khí dồn dần, ít cú giật, sợ vì chi tiết nhỏ",
+      "tone": "chậm rãi, thì thầm, rợn dần; nỗi sợ đến từ chi tiết nhỏ sai chỗ hơn là cú giật",
+      "pacing": "Dựng đời thường kỹ; điềm lạ nhỏ và cách xa nhau lúc đầu rồi dày dần; chỉ một cú giật ở cao trào; kết lặng",
+      "music": "drone"
+    },
+    "psychological": {
+      "label": "Ám ảnh tâm lý — nhân vật nghi chính mình, kết mở",
+      "tone": "bức bối, ngột ngạt, nghi ngờ; người nghe không chắc điều gì là thật",
+      "pacing": "Xen kẽ đời thường và khoảnh khắc lệch; nhân vật tự giải thích rồi tự nghi; cú lật đổi cách hiểu toàn bộ; kết mở",
+      "music": "pulse"
+    },
+    "folk": {
+      "label": "Dân gian u uất — như chuyện bà kể đêm mưa, buồn và lạnh",
+      "tone": "u uất, buồn, cổ kính; giọng kể như người lớn tuổi kể chuyện làng bên bếp lửa",
+      "pacing": "Mở như chuyện xưa; điềm lạ gắn với lời dặn, lệ làng và thiên nhiên; cao trào lặng lẽ mà nặng; kết có dư vị buồn",
+      "music": "wind"
+    },
+    "tense": {
+      "label": "Căng thẳng dồn dập — nhịp nhanh, bị đuổi theo, nhiều cú lật",
+      "tone": "gấp gáp, nghẹt thở, câu ngắn; nguy hiểm đến gần từng phút",
+      "pacing": "Vào chuyện nhanh; mỗi cảnh một bước ngoặt; hai lần tưởng thoát; cao trào kéo dài hơn các kiểu khác; kết dứt khoát",
+      "music": "pulse"
     }
   },
   "avoid": [

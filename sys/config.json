@@ -57,6 +57,9 @@
     "vocab.policy:check",
     "horror.policy:check"
   ],
+  "narration_styles": {
+    "horror_story": "horror/narration-style.md"
+  },
   "content_policies": [
     "horror.policy:lint"
   ]

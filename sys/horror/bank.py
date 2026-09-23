@@ -4,7 +4,8 @@
 Một video = một hạt giống. Hạt giống chỉ là mô-típ có nguồn gốc rõ ràng (tác phẩm
 đã hết bảo hộ, mô-típ dân gian hoặc tự viết); lời kể luôn viết mới.
 
-Không có lựa chọn mặc định cho tỷ lệ khung, thời lượng, truyện và chế độ duyệt.
+Không có lựa chọn mặc định cho tỷ lệ khung, thời lượng, truyện, không khí, ngôi kể
+và chế độ duyệt.
 Thiếu lựa chọn nào thì:
   - chạy trong terminal: hỏi từng câu;
   - chạy bởi agent (không có terminal) hoặc --no-input: trả về needs_input với
@@ -30,7 +31,9 @@ REPO = ROOT.parent
 LEDGER = ROOT / 'ledger.json'
 BRIEFS = ROOT / 'briefs'
 SEED_TAG = 'Mã hạt giống truyện: '
+MOOD_TAG = 'Không khí (mood): '
 AUTO = 'auto'
+SEED_MOOD = 'seed'
 BASIS = {'public_domain': 'tác phẩm đã hết bảo hộ', 'folklore': 'mô-típ dân gian', 'original': 'truyện tự viết'}
 
 
@@ -86,6 +89,7 @@ def channel():
 
 def seeds():
     items = read_json(ROOT / 'seeds.json')['seeds']
+    moods = channel()['moods']
     ids = [x['id'] for x in items]
     if len(ids) != len(set(ids)):
         raise Stop('seeds.json có id trùng')
@@ -96,6 +100,8 @@ def seeds():
             raise Stop(f"{x['id']}: hạt giống từ tác phẩm phải ghi basis.work")
         if len(x.get('dread', [])) < 3:
             raise Stop(f"{x['id']}: cần ít nhất ba điềm lạ trong dread")
+        if x.get('mood') not in moods:
+            raise Stop(f"{x['id']}: mood phải là một trong {sorted(moods)}")
     return items
 
 
@@ -123,12 +129,16 @@ def option_choices(key, cfg, led, items, limit=8):
         choices = [{'value': AUTO, 'label': f"{spec['auto_label']} ({pool[0]['id']} — {pool[0]['title']})"}]
         choices += [{'value': x['id'], 'label': f"{x['id']} — {x['title']} ({x['subgenre']})"} for x in pool[:limit]]
         return choices
+    if spec.get('choices_from') == 'moods':
+        return [{'value': SEED_MOOD, 'label': spec['seed_label']}] + [
+            {'value': key, 'label': mood['label']} for key, mood in cfg['moods'].items()]
     return spec['choices']
 
 
 def resolve_options(args, cfg, led, items, interactive):
     """Trả về dict lựa chọn đầy đủ; hỏi hoặc dừng khi thiếu. Không bao giờ tự điền."""
-    given = {'aspect_ratio': args.ratio, 'length': args.length, 'seed': args.seed, 'mode': args.mode}
+    given = {'aspect_ratio': args.ratio, 'length': args.length, 'seed': args.seed,
+             'mood': args.mood, 'pov': args.pov, 'mode': args.mode}
     missing = []
     for key, value in given.items():
         choices = option_choices(key, cfg, led, items)
@@ -183,6 +193,9 @@ def basis_line(seed):
 
 def make_brief(seed, cfg, choice):
     length = next(c for c in cfg['options']['length']['choices'] if c['value'] == choice['length'])
+    pov = next(c for c in cfg['options']['pov']['choices'] if c['value'] == choice['pov'])
+    mood_key = seed['mood'] if choice['mood'] == SEED_MOOD else choice['mood']
+    mood = cfg['moods'][mood_key]
     ratio = choice['aspect_ratio']
     host = cfg['host']
     dread = '; '.join(seed['dread'])
@@ -203,7 +216,7 @@ def make_brief(seed, cfg, choice):
             {'id': 'R6', 'text': 'Người dẫn chuyện khép lại, nhắc đây là truyện hư cấu và mời người xem kể cảm nhận; không kêu gọi thử làm theo bất cứ điều gì'},
         ],
         'language': cfg['language'],
-        'tone': cfg['tone'],
+        'tone': f"{cfg['tone']}; {mood['tone']}",
         'style': cfg['style'],
         'aspect_ratio': ratio,
         'facts_required': False,
@@ -216,10 +229,12 @@ def make_brief(seed, cfg, choice):
             ],
             'avoid': list(cfg['avoid']),
             'prior_knowledge': cfg['prior_knowledge'],
-            'pacing': cfg['pacing'],
+            'pacing': f"{cfg['pacing']}. {mood['pacing']}",
             'domain_requirements': list(cfg['domain_requirements']) + [
                 f"Người dẫn chuyện: {host['name']} — {host['appearance']}; {host['outfit']}",
                 f"Thể loại: {seed['subgenre']}",
+                f"{MOOD_TAG}{mood_key} — {mood['label']}",
+                f"Ngôi kể: {pov['rule']}",
                 basis_line(seed),
                 f"{SEED_TAG}{seed['id']} (dùng để đánh dấu đã làm)",
             ],
@@ -278,7 +293,7 @@ def cmd_draw(args, interactive=False):
     write_json(path, make_brief(seed, cfg, choice))
     led['seeds'][seed['id']] = {'status': 'reserved', 'job': args.job, 'at': stamp(),
                                 'brief': str(path.relative_to(REPO)),
-                                'choices': {k: choice[k] for k in ('aspect_ratio', 'length', 'mode')}}
+                                'choices': {k: choice[k] for k in ('aspect_ratio', 'length', 'mood', 'pov', 'mode')}}
     write_json(LEDGER, led)
     return {'job': args.job, 'seed': seed['id'], 'title': seed['title'], 'brief': str(path), 'choices': choice}
 
@@ -350,6 +365,8 @@ def parser():
     ap.add_argument('--ratio', help='16:9 hoặc 9:16 (bắt buộc chọn, không có mặc định)')
     ap.add_argument('--length', help='10-15, 15-20 hoặc 20-30 (phút)')
     ap.add_argument('--seed', help='mã hạt giống, hoặc auto để lấy truyện kế tiếp')
+    ap.add_argument('--mood', help='seed (theo truyện), slow_burn, psychological, folk hoặc tense')
+    ap.add_argument('--pov', help='third (ngôi thứ ba) hoặc first (ngôi thứ nhất)')
     ap.add_argument('--mode', help='review hoặc auto')
     ap.add_argument('--no-input', action='store_true', help='không hỏi; thiếu lựa chọn thì trả needs_input')
     ap.add_argument('--count', type=int, default=10)

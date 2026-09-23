@@ -11,7 +11,8 @@ from pilot import ROOT, Blocked
 from content_contract import validate_brief, ContractError
 from horror import bank, policy
 
-FULL = ['--ratio', '16:9', '--length', '15-20', '--seed', 'auto', '--mode', 'review']
+FULL = ['--ratio', '16:9', '--length', '15-20', '--seed', 'auto', '--mood', 'seed', '--pov', 'third', '--mode', 'review']
+REST = ['--mood', 'folk', '--pov', 'first']
 
 
 class HorrorBankTests(unittest.TestCase):
@@ -34,30 +35,36 @@ class HorrorBankTests(unittest.TestCase):
         args = bank.parser().parse_args(['draw', 'job-1'] + argv)
         return bank.cmd_draw(args, interactive)
 
-    def test_nothing_chosen_asks_all_four_questions_without_defaults(self):
+    def test_nothing_chosen_asks_every_question_without_defaults(self):
         with self.assertRaises(bank.NeedInput) as ctx:
             self.draw([])
         questions = {q['key']: q for q in ctx.exception.questions}
-        self.assertEqual(list(questions), ['aspect_ratio', 'length', 'seed', 'mode'])
+        self.assertEqual(list(questions), ['aspect_ratio', 'length', 'seed', 'mood', 'pov', 'mode'])
+        self.assertEqual([c['value'] for c in questions['mood']['choices']],
+                         [bank.SEED_MOOD, 'slow_burn', 'psychological', 'folk', 'tense'])
         self.assertEqual([c['value'] for c in questions['aspect_ratio']['choices']], ['16:9', '9:16'])
         self.assertEqual(questions['seed']['choices'][0]['value'], bank.AUTO)
         self.assertFalse((bank.LEDGER).exists(), 'nothing may be reserved before the user answers')
 
     def test_only_missing_choices_are_asked(self):
         with self.assertRaises(bank.NeedInput) as ctx:
-            self.draw(['--ratio', '9:16', '--seed', 'H003'])
-        self.assertEqual([q['key'] for q in ctx.exception.questions], ['length', 'mode'])
-        self.assertEqual(ctx.exception.rerun(), 'python3 horror/bank.py start job-1 --ratio 9:16 --seed H003 --length <lựa chọn> --mode <lựa chọn>')
+            self.draw(['--ratio', '9:16', '--seed', 'H003', '--pov', 'first'])
+        self.assertEqual([q['key'] for q in ctx.exception.questions], ['length', 'mood', 'mode'])
+        self.assertEqual(ctx.exception.rerun(), 'python3 horror/bank.py start job-1 --ratio 9:16 --seed H003 --pov first '
+                         '--length <lựa chọn> --mood <lựa chọn> --mode <lựa chọn>')
 
     def test_interactive_prompts_fill_missing_choices(self):
-        answers = io.StringIO('2\n3\n1\n2\n')  # 9:16, 20-30, auto seed, auto mode
+        answers = io.StringIO('2\n3\n1\n4\n1\n2\n')  # 9:16, 20-30, auto seed, folk, third, auto mode
         with patch('sys.stdin', answers), patch('sys.stderr', io.StringIO()):
             result = self.draw([], interactive=True)
-        self.assertEqual(result['choices'], {'aspect_ratio': '9:16', 'length': '20-30', 'seed': 'auto', 'mode': 'auto'})
+        self.assertEqual(result['choices'], {'aspect_ratio': '9:16', 'length': '20-30', 'seed': 'auto',
+                                             'mood': 'folk', 'pov': 'third', 'mode': 'auto'})
 
     def test_invalid_choice_is_rejected(self):
         with self.assertRaisesRegex(bank.Stop, '--ratio'):
-            self.draw(['--ratio', 'dual', '--length', '10-15', '--seed', 'auto', '--mode', 'review'])
+            self.draw(['--ratio', 'dual', '--length', '10-15', '--seed', 'auto', '--mode', 'review'] + REST)
+        with self.assertRaisesRegex(bank.Stop, '--mood'):
+            self.draw(['--ratio', '9:16', '--length', '10-15', '--seed', 'auto', '--mode', 'review', '--mood', 'funny', '--pov', 'third'])
 
     def test_landscape_brief_reads_vietnamese_and_is_valid(self):
         result = self.draw(FULL)
@@ -70,16 +77,30 @@ class HorrorBankTests(unittest.TestCase):
         policy.check(ROOT, 'job-1', brief)
 
     def test_portrait_brief_has_no_audio_language(self):
-        brief = json.loads(Path(self.draw(['--ratio', '9:16', '--length', '10-15', '--seed', 'H005', '--mode', 'auto'])['brief']).read_text())
+        brief = json.loads(Path(self.draw(['--ratio', '9:16', '--length', '10-15', '--seed', 'H005', '--mode', 'auto'] + REST)['brief']).read_text())
         validate_brief(ROOT, brief)
         self.assertNotIn('audio_language', brief)
         self.assertIn(bank.SEED_TAG + 'H005 (dùng để đánh dấu đã làm)', brief['planning']['domain_requirements'])
 
     def test_reserved_seed_cannot_be_taken_twice(self):
-        self.draw(['--ratio', '9:16', '--length', '10-15', '--seed', 'H002', '--mode', 'review'])
-        args = bank.parser().parse_args(['draw', 'job-2', '--ratio', '9:16', '--length', '10-15', '--seed', 'H002', '--mode', 'review'])
+        self.draw(['--ratio', '9:16', '--length', '10-15', '--seed', 'H002', '--mode', 'review'] + REST)
+        args = bank.parser().parse_args(['draw', 'job-2', '--ratio', '9:16', '--length', '10-15', '--seed', 'H002', '--mode', 'review'] + REST)
         with self.assertRaisesRegex(bank.Stop, 'reserved'):
             bank.cmd_draw(args)
+
+    def test_mood_and_pov_shape_the_brief(self):
+        seeded = json.loads(Path(self.draw(FULL)['brief']).read_text())  # H001 suggests slow_burn
+        cfg = bank.channel()
+        self.assertIn(cfg['moods']['slow_burn']['tone'], seeded['tone'])
+        self.assertIn(cfg['moods']['slow_burn']['pacing'], seeded['planning']['pacing'])
+        self.assertIn(bank.MOOD_TAG + 'slow_burn — ' + cfg['moods']['slow_burn']['label'], seeded['planning']['domain_requirements'])
+        args = bank.parser().parse_args(['draw', 'job-2', '--ratio', '9:16', '--length', '10-15', '--seed', 'H002', '--mode', 'review'] + REST)
+        chosen = json.loads(Path(bank.cmd_draw(args)['brief']).read_text())
+        self.assertIn(cfg['moods']['folk']['tone'], chosen['tone'])
+        first = cfg['options']['pov']['choices'][1]
+        self.assertEqual(first['value'], 'first')
+        self.assertIn('Ngôi kể: ' + first['rule'], chosen['planning']['domain_requirements'])
+        self.assertEqual(bank.ledger()['seeds']['H002']['choices']['pov'], 'first')
 
     def test_policy_blocks_handwritten_or_foreign_briefs(self):
         brief = json.loads(Path(self.draw(FULL)['brief']).read_text())
@@ -93,6 +114,7 @@ class HorrorBankTests(unittest.TestCase):
         items = bank.seeds()
         self.assertGreaterEqual(len(items), 10)
         for seed in items:
+            self.assertIn(seed['mood'], bank.channel()['moods'], seed['id'])
             if seed['basis']['type'] == 'public_domain':
                 self.assertTrue(seed['basis']['work'] and seed['basis']['year'], seed['id'])
 
@@ -101,6 +123,16 @@ def content(narration, visible=()):
     return {'scenes': [{'id': 'SC01', 'narration': narration, 'images': [
         {'id': 'IMG1', 'description': 'Một hành lang tối', 'preserve': '', 'change': 'Thêm bóng người',
          'visible_text': [{'text': t, 'placement': 'giữa', 'object': 'biển'} for t in visible]}]}]}
+
+
+class HorrorStyleTests(unittest.TestCase):
+    def test_horror_briefs_get_the_genre_narration_guide(self):
+        from scripts.agy_pipeline import genre_style
+        guide = (ROOT / 'horror/narration-style.md').read_text()
+        self.assertIn(guide, genre_style(ROOT, {'video_type': 'horror_story'}))
+        self.assertEqual(genre_style(ROOT, {'video_type': 'vocabulary'}), '')
+        for mood in bank.channel()['moods']:
+            self.assertIn('`' + mood + '`', guide, 'every mood needs writing rules in the guide')
 
 
 class HorrorLintTests(unittest.TestCase):

@@ -9,9 +9,9 @@ Lệnh tính từ `sys/`. Đọc `AGENTS.md`, `docs/workflow.md` và `docs/horro
 
 ## Hỏi trước, không tự chọn
 
-Bốn lựa chọn không có mặc định: tỷ lệ khung (16:9 hay 9:16), thời lượng (10-15, 15-20, 20-30 phút), truyện (mã hạt giống hoặc auto) và chế độ (review hay auto). Chỉ điền cờ cho lựa chọn người dùng đã nói rõ trong cuộc trò chuyện.
+Sáu lựa chọn không có mặc định: tỷ lệ khung (16:9 hay 9:16), thời lượng (10-15, 15-20, 20-30 phút), truyện (mã hạt giống hoặc auto), không khí (seed, slow_burn, psychological, folk, tense), ngôi kể (third hay first) và chế độ (review hay auto). Chỉ điền cờ cho lựa chọn người dùng đã nói rõ trong cuộc trò chuyện.
 
-1. Chạy `python3 horror/bank.py start JOB --no-input` kèm các cờ đã biết (`--ratio`, `--length`, `--seed`, `--mode`).
+1. Chạy `python3 horror/bank.py start JOB --no-input` kèm các cờ đã biết (`--ratio`, `--length`, `--seed`, `--mood`, `--pov`, `--mode`).
 2. Nếu kết quả có `needs_input` (mã thoát 3): hỏi người dùng đúng các câu trong đó, đưa đúng các lựa chọn được trả về (dùng công cụ hỏi lựa chọn nếu có). Không đoán, không lấy lựa chọn đầu tiên, không nhớ từ job trước.
 3. Chạy lại lệnh trong `hint` với câu trả lời thật. `start` tự tạo job với đúng chế độ đã chọn.
 
