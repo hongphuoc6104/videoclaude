@@ -300,5 +300,11 @@
       "Vĩnh Phúc",
       "Bà Rịa"
     ]
+  },
+  "visual_density": {
+    "note": "Truyện kinh dị đo được khoảng 14 giây mới đổi một ảnh (lâu nhất 25 giây) trên thu-5p-h007g; kênh kể chuyện không lộ mặt đổi hình vài giây một lần. Mục tiêu: khoảng 10 giây một ảnh mới, 6 giây một nhịp máy quay; kiểm tra kịch bản chặn cảnh chậm hơn tolerance lần mục tiêu.",
+    "seconds_per_image": 10,
+    "seconds_per_beat": 6,
+    "tolerance": 1.3
   }
 }

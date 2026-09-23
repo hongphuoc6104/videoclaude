@@ -82,7 +82,8 @@ def generate(p,job):
     if {r for x in outline['outline'] for r in x['requirements']} != {x['id'] for x in b['required_points']}:raise Blocked('OUTLINE: missing or unknown requirements')
     write(out/'outline.json',outline)
     prompt+='\nDàn ý đã kiểm tra cấu trúc (chưa duyệt chất lượng): '+json.dumps(outline,ensure_ascii=False)
-    prompt+='\nViết đầy đủ content-v3, giữ nguyên outline. '+DETAIL_RULES
+    from scripts.story_plan import density_rule
+    prompt+='\nViết đầy đủ content-v3, giữ nguyên outline. '+DETAIL_RULES+density_rule(b)
     result=invoke(prompt+style,read(p.root/'schemas/content-v3.json'),out)
     if result['structured_output'].get('outline') != outline['outline']:raise Blocked('OUTLINE: detailed script changed outline')
   else:

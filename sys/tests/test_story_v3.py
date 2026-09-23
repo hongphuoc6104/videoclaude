@@ -37,6 +37,25 @@ class StoryContractTests(unittest.TestCase):
         b,c=fixture();add_variation(c);self.check(b,c)
         self.assertEqual(len(image_units(c)),7)
         self.assertEqual(sum(len(x['beats']) for x in c['scenes']),8)
+    def test_visual_density_rejects_a_long_scene_with_one_picture(self):
+        """A brief with visual_density blocks a scene whose single image would stay on screen too long."""
+        b,c=fixture();sc=c['scenes'][0]
+        sc['narration']=sc['narration']+' '+' '.join(['Tiếng gió rít qua khe cửa suốt đêm dài.']*12)
+        b['planning']['visual_density']={'seconds_per_image':10,'seconds_per_beat':6,'tolerance':1.3}
+        with self.assertRaises(ContractError) as ctx:self.check(b,c)
+        codes={e['code'] for e in ctx.exception.errors}
+        self.assertIn('IMAGE_DENSITY',codes);self.assertIn('BEAT_DENSITY',codes)
+        del b['planning']['visual_density'];self.check(b,c)
+    def test_visual_density_rule_gives_word_counts(self):
+        from scripts.story_plan import density_rule
+        b,_=fixture();self.assertEqual(density_rule(b),'')
+        b['planning']['visual_density']={'seconds_per_image':10,'seconds_per_beat':6}
+        rate=b['planning']['speech_rates']['vi']['units_per_second']
+        self.assertIn(f"about every {round(10*rate)} words",density_rule(b))
+    def test_horror_brief_carries_visual_density(self):
+        profile=read(ROOT/'horror/channel.json')['visual_density']
+        schema=read(ROOT/'schemas/brief-v3.json')['properties']['planning']['properties']['visual_density']
+        import jsonschema;jsonschema.validate({k:v for k,v in profile.items() if k!='note'},schema)
     def test_topic_and_type_are_not_hardcoded(self):
         for topic,kind in [('Bảo dưỡng xe','technical'),('Kể chuyện lịch sử','documentary'),('Giới thiệu sản phẩm','advertisement')]:
             b,c=fixture();b.update(topic=topic,video_type=kind);c['topic']=topic;self.check(b,c)

@@ -42,6 +42,53 @@ def needs_english(b):
     return any(lang == 'en' for lang, _ in tracks(b))
 
 
+def scene_seconds(text, rate):
+    """Estimated read-aloud seconds of one scene's narration at a brief speech rate."""
+    seconds = len(text.split())/rate['units_per_second']
+    return seconds if rate.get('includes_pauses') else seconds + len(re.findall(r'[.!?;,]', text))*.15 + .3
+
+
+def density(b):
+    """(language, rate, targets) for the brief's visual density, or None. Checked on the
+    first spoken track: images and beats are shared, the Vietnamese read is the longest."""
+    d = (b.get('planning') or {}).get('visual_density')
+    if not d: return None
+    lang = tracks(b)[0][0]
+    return lang, b['planning']['speech_rates'][lang], d
+
+
+def density_rule(b):
+    """Prompt text telling the script writer how many images and beats a scene needs."""
+    got = density(b)
+    if not got: return ''
+    lang, rate, d = got
+    wpi, wpb = round(d['seconds_per_image']*rate['units_per_second']), round(d['seconds_per_beat']*rate['units_per_second'])
+    return (f"\nVisual density (checked; a scene below it is rejected): give every scene one new distinct image for about every "
+            f"{wpi} words of {field_name(lang)} (about {d['seconds_per_image']} s read aloud) and one visual beat for about every "
+            f"{wpb} words (about {d['seconds_per_beat']} s). A 120-word scene needs at least {-(-120//wpi)} images and "
+            f"{-(-120//wpb)} beats. A based_on variant (new angle, closer framing, the same place a moment later) counts as a distinct "
+            "image; reusing one image across beats with a different camera effect counts as a beat only. Each image still needs a "
+            "reason from the narration.\n")
+
+
+def field_name(lang):
+    return 'narration_en' if lang == 'en' else 'narration'
+
+
+def density_problems(b, c):
+    """[(scene_id, kind, seconds per unit, allowed)] for scenes slower than the brief's visual density allows."""
+    got = density(b)
+    if not got: return []
+    lang, rate, d = got
+    slack = d.get('tolerance', 1.3); out = []
+    for sc in c['scenes']:
+        seconds = scene_seconds(sc[field_name(lang)], rate)
+        for kind, count, target in [('image', len(sc['images']), d['seconds_per_image']), ('beat', len(sc['beats']), d['seconds_per_beat'])]:
+            if count and seconds/count > target*slack:
+                out.append((sc['id'], kind, round(seconds/count, 1), round(target*slack, 1)))
+    return out
+
+
 def occurrence(text, anchor):
     start = 0
     for _ in range(anchor['occurrence']):
@@ -119,6 +166,10 @@ def validate_plan(b, c):
             fail('CLAIM_SOURCE','claims','Phát biểu/nguồn/dữ kiện không khớp; đúng nghĩa vẫn cần đánh giá')
     if b['facts_required'] and not c['claims']:
         fail('CLAIM_SOURCE','claims','Nội dung yêu cầu dữ kiện phải có liên kết phát biểu và nguồn')
+    for sid, kind, per, allowed in density_problems(b, c):
+        # Too few pictures for the scene's length: the viewer looks at one still for too long.
+        fail('IMAGE_DENSITY' if kind == 'image' else 'BEAT_DENSITY', sid,
+             f"Khoảng {per} giây mới đổi một {'ảnh' if kind == 'image' else 'nhịp hình'}; tối đa {allowed} giây — thêm ảnh/biến thể hoặc nhịp")
     valid_scenes=set(ids)
     for response in c['revision_response']:
         if not set(response['scene_ids'])<=valid_scenes: fail('REVISION_RESPONSE','revision_response','Phản hồi trỏ tới cảnh không tồn tại')
@@ -154,7 +205,7 @@ def estimates(b, c):
         for sc in c['scenes']:
             text = sc['narration_en' if lang=='en' else 'narration']
             units = len(text.split())
-            seconds = units/rate['units_per_second'] + (0 if rate.get('includes_pauses') else len(re.findall(r'[.!?;,]',text))*.15 + .3)
+            seconds = scene_seconds(text, rate)
             rows.append({'scene_id':sc['id'], 'units':units, 'seconds':round(seconds,2),
                          'min':round(seconds*(1-rate['uncertainty']),2), 'max':round(seconds*(1+rate['uncertainty']),2)})
             if seconds/len(sc['beats']) < 1.5:
@@ -193,7 +244,9 @@ def review_plan(b, c, previous=None, requests=()):
            'Kiến thức đầu vào: '+plan['prior_knowledge'], 'Tiêu chí đạt:\n'+bullets(plan['success_criteria']),
            'Cần tránh:\n'+bullets(plan['avoid']), 'Yêu cầu chuyên biệt:\n'+bullets(plan['domain_requirements']),
            'Nhịp kể: '+plan['pacing'], 'Giả định cần kiểm tra:\n'+bullets(plan['assumptions']),
-           f"{len(c['scenes'])} cảnh · {sum(len(s['images']) for s in c['scenes'])} hình logic · {sum(len(s['beats']) for s in c['scenes'])} nhịp",
+           f"{len(c['scenes'])} cảnh · {sum(len(s['images']) for s in c['scenes'])} hình logic · {sum(len(s['beats']) for s in c['scenes'])} nhịp"
+           + (f" · trung bình {round(sum(r['seconds'] for r in timing['languages'][density(b)[0]]['scenes'])/max(1,sum(len(s['images']) for s in c['scenes'])),1)} giây/ảnh"
+              f" (mục tiêu {plan['visual_density']['seconds_per_image']})" if density(b) else ''),
            'Dual tạo hai bộ hình riêng cho hai tỷ lệ.' if b['aspect_ratio']=='dual' else 'Tỷ lệ: '+b['aspect_ratio'],
            'Âm thanh: '+(('nhạc nền '+str(b['sound']['bed'] or 'không có')+(', có tiếng động theo lời dẫn' if b['sound']['sfx'] else ', không tiếng động')) if b.get('sound') else 'chỉ lời dẫn')+' (thư viện CC0, trộn ở bước video)',
            '## Thời lượng dự kiến (chưa phải WAV)']

@@ -60,6 +60,14 @@ Giọng máy đọc mọi câu cùng tốc độ, cùng độ to, cùng khoảng
 - **Thời lượng**: đọc có đạo diễn dài hơn, 1169 chữ mất 347 giây thay vì 299 giây. Brief kinh dị vì thế dùng tốc độ đã đo là 3,3 chữ/giây (đã tính khoảng lặng) để đặt số chữ mỗi cảnh.
 - Brief không có `delivery` (job cũ, video không phải kinh dị) vẫn đọc như trước, và bộ đệm giọng cũ vẫn dùng lại được.
 
+## Mật độ hình
+
+- Đo trên thu-5p-h007g: trung bình khoảng 14 giây mới có một ảnh mới, có chỗ tới 25 giây, và mỗi cảnh luôn chỉ có 2 ảnh dù cảnh dài bao nhiêu.
+- `horror/channel.json` → `visual_density`, được chép vào brief (`planning.visual_density`), đặt mục tiêu: khoảng 10 giây một ảnh khác nhau và 6 giây một nhịp hình. Biến thể `based_on` (góc khác, cận hơn, cùng chỗ một lúc sau) được tính là ảnh mới.
+- Khi viết chi tiết, agy được báo mỗi cảnh cần bao nhiêu chữ cho một ảnh và một nhịp.
+- `story_plan.validate_plan` chặn cảnh nào chậm hơn 1,3 lần mục tiêu (lỗi `IMAGE_DENSITY` hoặc `BEAT_DENSITY`). Độ dài cảnh được ước tính theo tốc độ đọc trong brief.
+- Truyện 5 phút cần khoảng 35–40 ảnh thay vì 22, nên phải gửi Flow nhiều đợt hơn.
+
 ## Kịch bản dài (viết theo từng đoạn)
 
 Một lần gọi agy chỉ có tối đa 180 giây, không đủ viết 20–40 cảnh. Khi brief có nhiều cảnh hơn `config.json` → `content_chunk_scenes` (mặc định 6), `pilot.py run JOB content` tự làm theo `scripts/long_script.py`:
