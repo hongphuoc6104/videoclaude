@@ -58,7 +58,8 @@ class ImagesV2Tests(unittest.TestCase):
         chars=list(args[args.index('--character')+1:]) if '--character' in args else []
         if not registration:
             write(folder/'result.json',{'jobId':args[args.index('--id')+1],'type':'image','prompt':args[args.index('--prompt')+1],
-                  'ratio':'9:16','characters':chars,'source':'google-flow-browser','status':'downloaded'})
+                  'ratio':'9:16','characters':chars,'source':'google-flow-browser','status':'downloaded',
+                  'forgeId':'TEST-MEDIA-'+args[args.index('--id')+1]})
         write(folder.parent/'ui-proof.json',{'passed':True,'mode':'character-register' if registration else 'image','characters':chars})
         Image.new('RGB',(30,30)).save(folder.parent/'before-submit.png')
         return SimpleNamespace(returncode=0,stdout='TEST PROVIDER',stderr='')
@@ -377,7 +378,7 @@ class ImagesV2Tests(unittest.TestCase):
             Image.new('RGB', size, rgb).save(folder / 'result.png')
             write(folder / 'result.json', {'jobId': args[args.index('--id') + 1], 'type': 'image',
                   'prompt': args[args.index('--prompt') + 1], 'ratio': ratio, 'characters': [],
-                  'source': 'google-flow-browser', 'status': 'downloaded'})
+                  'source': 'google-flow-browser', 'status': 'downloaded', 'forgeId': 'TEST-MEDIA'})
             proof = {'passed': True, 'mode': 'image', 'characters': []}
             if '--base-image' in args:
                 proof['base_image'] = args[args.index('--base-image') + 1]

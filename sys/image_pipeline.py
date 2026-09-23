@@ -326,17 +326,23 @@ def request(p, j, target, prompt, refs=(), registration=None, base_image=None):
     out.mkdir()
     common = ['--profile', cfg['flow_profile'], '--project', cfg['flow_project'], '--out', str(out)]
     model_arg = 'nano-banana-pro' if 'pro' in cfg['flow_model'].lower() else ('nano-banana-2' if '2' in cfg['flow_model'] else cfg['flow_model'])
+    # Only the channel host uses the fixed mascot image; story characters use their own Flow reference.
+    host = target.startswith(('ref:', 'register:')) and target.split(':')[1] == canonical_id(p)
     if registration:
         args = ['character', 'create', '--name', registration['name'], '--prompt', actual_prompt,
                 '--model', model_arg,
                 '--image', str(p.path(j, registration['path']))] + common
+        args += ['--canonical'] if host else ['--media-id', registration['media_id']]
     else:
         args = ['image', '--id', key[:16], '--prompt', actual_prompt, '--model', model_arg,
                 '--ratio', ratio, '--outputs', '1'] + common
         if base_image:
             args += ['--base-image', str(p.path(j,base_image['path']))]
         if refs:
-            args += ['--character'] + [x['name'] for x in refs]
+            # --character stays last: providers read the names to the end of the argument list.
+            args += ['--character-ref'] + reference_files(p, j, refs) + ['--character'] + [x['name'] for x in refs]
+        else:
+            args += ['--canonical'] if host else ['--no-character']
     result = {'key': key, 'identity': identity, 'state': 'submitted', 'submitted_at': time.time(),
               'args': args, 'journal': str(record.relative_to(p.job(j)))}
     write(record, result)
@@ -437,7 +443,8 @@ def batch_submit(p, j, units, registrations):
         if requires_ui_evidence(p): shutil.copy(p.path(j, evidence['screenshot']), folder / 'preflight.png')
         jobs.append({'id': plan['key'][:16], 'type': 'image', 'project': cfg['flow_project'],
                      'prompt': plan['actual_prompt'], 'model': model_arg, 'ratio': plan['ratio'],
-                     'outputs': 1, 'character': [x['name'] for x in plan['linked']], 'out': str(batch_dir)})
+                     'outputs': 1, 'character': [x['name'] for x in plan['linked']],
+                     'character_refs': reference_files(p, j, plan['linked']), 'out': str(batch_dir)})
         plan['folder'], plan['job_id'] = folder, plan['key'][:16]
     jobs_by_id = {job['id']: (job, plan) for job, plan in zip(jobs, plans)}
     jobs_file = batch_dir / 'jobs.json'
@@ -507,13 +514,31 @@ def batch_submit(p, j, units, registrations):
             p.event(j, 'images', 'flow_batch_ambiguous', key)
 
 
+def canonical_id(p):
+    return read(p.root / 'config.json').get('canonical_character', {}).get('id')
+
+
+def media_id_of(p, j, journal):
+    """Flow media id of a downloaded result, from the sidecar the adapter writes next to it."""
+    side = p.path(j, read(p.path(j, journal))['path']).with_suffix('.json')
+    return read(side).get('forgeId') if side.is_file() else None
+
+
+def reference_files(p, j, refs):
+    """Registered reference images for a scene, in scene order; the adapter attaches the first."""
+    return [str(p.path(j, read(p.path(j, x['registration_journal']))['path'])) for x in refs]
+
+
 def reference_prompt(c, char):
     return f"{c['style']}. Một nhân vật toàn thân, nền đơn giản, không chữ. {char['name']}. {char['appearance']}. Trang phục: {char['outfit']}."
 
 
 def register(p, j, ref):
+    media = None if ref['character_id'] == canonical_id(p) else media_id_of(p, j, ref['request'])
+    if ref['character_id'] != canonical_id(p) and not media:
+        raise Blocked('M2_REFERENCE_MEDIA: reference of ' + ref['character_id'] + ' has no Flow media id; reject and regenerate it')
     r = request(p, j, 'register:' + ref['character_id'] + ':' + ref['sha256'], ref['prompt'],
-                registration={'name': ref['name'], 'path': ref['path'], 'sha256': ref['sha256']})
+                registration={'name': ref['name'], 'path': ref['path'], 'sha256': ref['sha256'], 'media_id': media})
     confirmation = p.path(j, r['journal']).parent / 'confirmation.json'
     if not confirmation.exists() and (p.job(j) / 'workflow.json').exists():
         import workflow

@@ -71,4 +71,12 @@ Thêm mục vào `horror/seeds.json` với id kế tiếp (không đổi id cũ)
 
 Nhân vật đại diện kênh (người que áo xanh #8CCFE8) chỉ xuất hiện ở cảnh mở đầu và cảnh kết, như người kể chuyện. Các cảnh trong truyện dùng nhân vật riêng của truyện.
 
-**Chưa xong:** bước tạo ảnh hiện vẫn gắn ảnh tham chiếu mascot cho mọi ảnh (`adapters.py`, lệnh `image` và `batch`), nên nhân vật truyện sẽ bị vẽ thành người que. Cần sửa để mỗi nhân vật truyện có ảnh tham chiếu riêng và thử trên Flow thật trước khi sản xuất.
+Cách bước tạo ảnh chọn ảnh tham chiếu (`image_pipeline.py`, `adapters.py`, `b2_bridge.py`, `queue-runner.mjs`):
+
+| Ai trong hình | Ảnh tham chiếu gửi Flow | Ghi chú |
+|---|---|---|
+| Người dẫn chuyện (nhân vật có id trùng `config.json` → `canonical_character.id`) | Ảnh mascot cố định và media id của nó | Chỉ lúc này mới thêm mô tả giải phẫu người que vào prompt |
+| Nhân vật truyện | Ảnh tham chiếu riêng Flow đã vẽ ở bước `references` | "Đăng ký" chỉ giữ ảnh đó và media id, không tạo ảnh mới |
+| Không có ai (cảnh vắng, đồ vật) | Không có | Tạo ảnh chỉ từ chữ (`--no-character` / `noCharacter`) |
+
+Không còn đường lui về mascot: thiếu ảnh hoặc media id của nhân vật thì dừng với `CHARACTER_REFERENCE_UNRESOLVED`. Công cụ trên Flow chỉ có một ô nhân vật, nên cảnh có hai người thì gắn ảnh người đầu tiên trong `character_ids`; người thứ hai vẽ theo mô tả ngoại hình trong prompt. Hãy đặt nhân vật chính lên đầu danh sách.

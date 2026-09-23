@@ -14,6 +14,20 @@ def copy_optional_flow_screenshot(source, destination, *, required):
   raise Blocked('Real Flow UI evidence required; no synthetic screenshot')
 
 def rel(p,j,path):return str(Path(path).relative_to(p.job(j)))
+
+def character_reference(p, names, refs):
+ """The one character reference the Flow tool attaches: the scene's first character.
+ Others in the same image are drawn from the prompt text only (the tool has one character slot)."""
+ if len(refs) != len(names):
+  raise Blocked('CHARACTER_REFERENCE_UNRESOLVED: one --character-ref per --character')
+ side = Path(refs[0]).with_suffix('.json')
+ meta = read(side) if side.is_file() else {}
+ if not meta.get('forgeId'):
+  raise Blocked('CHARACTER_REFERENCE_UNRESOLVED: no Flow media id beside ' + refs[0])
+ if meta.get('canonical') is True:
+  host = config(p).get('canonical_character', {})
+  return {'path': str(p.root / host['reference_path']), 'media_id': host['media_id'], 'canonical': True, 'name': names[0]}
+ return {'path': refs[0], 'media_id': meta['forgeId'], 'canonical': False, 'name': names[0]}
 def config(p):return read(p.root/'config.json')
 def gflow(p,*args,timeout=960):
  if args and args[0]=='video':raise Blocked('Video AI disabled')
@@ -57,29 +71,27 @@ def gflow(p,*args,timeout=960):
    for item in args_list[idx + 1:]:
     if item.startswith('--'): break
     char_names.append(item)
+  char_refs = []
+  if '--character-ref' in args_list:
+   for item in args_list[args_list.index('--character-ref') + 1:]:
+    if item.startswith('--'): break
+    char_refs.append(item)
 
-  canonical_mascot = p.root / 'assets/characters/channel-mascot/reference-v1.png'
-  char_ref_path = reg_img if is_reg else None
-  char_media_id = None
-  if not char_ref_path:
-   if canonical_mascot.exists():
-    char_ref_path = str(canonical_mascot)
-    char_media_id = 'de94a39b-155f-4afe-acbb-d9d4b59ad532'
-   elif char_names:
-    for name in char_names:
-     key_prefix = name.rsplit('-', 1)[-1]
-     for req in (p.root / 'runs').glob(f"*/flow/attempts/{key_prefix}*/request.json"):
-      try:
-       cand = req.parent / 'download/result.png'
-       if not cand.exists():
-        for f in (req.parent / 'download').glob('*'):
-         if f.is_file() and f.suffix.lower() in ('.png', '.jpg', '.jpeg', '.webp'):
-          cand = f; break
-       if cand.exists(): char_ref_path = str(cand); break
-      except Exception: pass
-     if char_ref_path: break
+  # Who is drawn: the channel host (fixed mascot image), a story character
+  # (its own registered Flow reference), or nobody (text-only). Never guess.
+  host = config(p).get('canonical_character', {})
+  canonical_mascot = p.root / host.get('reference_path', 'assets/characters/channel-mascot/reference-v1.png')
+  canonical = '--canonical' in args_list
+  no_character = '--no-character' in args_list
+  char_ref_path = char_media_id = attached = None
+  if not is_reg and not canonical and not no_character:
+   if not char_refs:
+    raise Blocked('CHARACTER_REFERENCE_UNRESOLVED: pass --character-ref for every --character, or --no-character')
+   ref = character_reference(p, char_names, char_refs)
+   char_ref_path, char_media_id, canonical, attached = ref['path'], ref['media_id'], ref['canonical'], ref['name']
 
-  if canonical_mascot.exists() and (is_reg or (not char_names and not base_img)):
+  if canonical and (is_reg or not char_names and not base_img):
+   # Host reference and host registration: the fixed canonical mascot, no Flow call.
    with Image.open(canonical_mascot) as ref_im:
     if ratio == '9:16':
      w, h = 768, 1365
@@ -97,7 +109,15 @@ def gflow(p,*args,timeout=960):
      canvas.paste(scaled, ((w - nw) // 2, (h - nh) // 2), scaled if scaled.mode == 'RGBA' else None)
     dest_img = out_folder / 'result.jpg'
     canvas.save(dest_img, quality=95)
-    b2_res = {'path': str(dest_img), 'forge_id': 'FORGE-CANONICAL-MASCOT', 'latency': 0.1}
+    b2_res = {'path': str(dest_img), 'forge_id': host.get('media_id'), 'latency': 0.1, 'tool': 'canonical-mascot'}
+  elif is_reg:
+   # A story character is "registered" by keeping its own Flow reference and media id; nothing is generated.
+   media = _get_arg('--media-id')
+   if not media or not reg_img:
+    raise Blocked('CHARACTER_REFERENCE_UNRESOLVED: registration needs --image and --media-id')
+   dest_img = out_folder / ('result' + Path(reg_img).suffix.lower())
+   shutil.copy(reg_img, dest_img)
+   b2_res = {'path': str(dest_img), 'forge_id': media, 'latency': 0.0, 'tool': 'flow-reference'}
   else:
    b2_res = b2_bridge.generate_b2_image(
     prompt=prompt,
@@ -106,6 +126,8 @@ def gflow(p,*args,timeout=960):
     base_media_id=(read(Path(base_img).with_suffix(".json")).get("forgeId") if base_img and Path(base_img).with_suffix(".json").is_file() else None),
     char_ref_path=char_ref_path,
     char_media_id=char_media_id,
+    canonical=canonical,
+    no_character=no_character,
     out_dir=out_folder,
     test_case=job_id,
     timeout=timeout
@@ -116,6 +138,10 @@ def gflow(p,*args,timeout=960):
     raise Blocked('B-2 output must be in the requested download directory')
    dest_img = src_img
 
+  if is_reg:
+   # Scene requests read the media id (and whether it is the host) from this sidecar.
+   write(dest_img.with_suffix('.json'), {'type': 'character-reference', 'name': reg_name,
+         'forgeId': b2_res.get('forge_id'), 'canonical': canonical})
   if not is_reg:
    meta = {
     'jobId': job_id,
@@ -135,7 +161,8 @@ def gflow(p,*args,timeout=960):
    'passed': True,
    'mode': 'character-register' if is_reg else 'image',
    'characters': char_names,
-   'tool': 'b2-illustrator',
+   'attached_character': attached,
+   'tool': b2_res.get('tool', 'b2-illustrator'),
    'forgeId': b2_res.get('forge_id')
   }
   if base_img: proof['base_image'] = base_img
@@ -155,12 +182,16 @@ def gflow(p,*args,timeout=960):
   jobs = data.get('jobs', [])
   run_jobs = []
   state_file = batch_out / 'gflow-run.json'
-  mascot = p.root / 'assets/characters/channel-mascot/reference-v1.png'
+  def spec(job):
+   # An image without characters is generated from text only; never fall back to the mascot.
+   names = job.get('character', [])
+   ref = character_reference(p, names, job.get('character_refs', [])) if names else None
+   return b2_bridge.queue_spec(job['id'], job['prompt'], job.get('ratio', '9:16'), batch_out / job['id'],
+                               char_ref_path=ref and ref['path'], char_media_id=ref and ref['media_id'],
+                               canonical=bool(ref and ref['canonical']), no_character=ref is None)
   for offset in range(0, len(jobs), 4):
    group = jobs[offset:offset+4]
-   specs = [{'testCase': job['id'], 'prompt': job['prompt'], 'ratio': job.get('ratio', '9:16'),
-             'outDir': str(batch_out / job['id']), 'characterRefPath': str(mascot),
-             'charMediaId': 'de94a39b-155f-4afe-acbb-d9d4b59ad532'} for job in group]
+   specs = [spec(job) for job in group]
    # Persist attempted membership BEFORE the external call. Ambiguous groups cannot fall through to serial retries.
    entries = [{'id': job['id'], 'status': 'failed', 'error': 'Submission pending; reconcile before retry'} for job in group]
    run_jobs.extend(entries)

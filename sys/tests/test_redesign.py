@@ -22,7 +22,7 @@ class RedesignTests(unittest.TestCase):
             out=root/'attempt/download';out.mkdir(parents=True)
             artifact=out/'stable-id.jpg';Image.new('RGB',(160,90)).save(artifact)
             p=SimpleNamespace(root=root)
-            args=('image','--id','test','--prompt','scene','--ratio','16:9','--character','CH01','--out',str(out))
+            args=('image','--id','test','--prompt','scene','--ratio','16:9','--no-character','--out',str(out))
             with patch.object(b2_bridge,'generate_b2_image',return_value={'path':str(artifact),'forge_id':'media-id'}):
                 for _ in range(2):
                     adapters.gflow(p,*args)

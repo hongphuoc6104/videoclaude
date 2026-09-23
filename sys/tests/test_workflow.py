@@ -50,7 +50,8 @@ class WorkflowTests(unittest.TestCase):
         if not registration:
             write(folder / 'result.json', {'jobId': args[args.index('--id') + 1], 'type': 'image',
                 'prompt': args[args.index('--prompt') + 1], 'ratio': args[args.index('--ratio') + 1],
-                'characters': chars, 'source': 'google-flow-browser', 'status': 'downloaded'})
+                'characters': chars, 'source': 'google-flow-browser', 'status': 'downloaded',
+                'forgeId': 'TEST-MEDIA-' + args[args.index('--id') + 1]})
         write(folder.parent / 'ui-proof.json', {'passed': True, 'mode': 'character-register' if registration else 'image', 'characters': chars})
         Image.new('RGB', (40, 40), 'blue').save(folder.parent / 'before-submit.png')
         return SimpleNamespace(returncode=0, stdout='TEST ONLY', stderr='')

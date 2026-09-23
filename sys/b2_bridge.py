@@ -72,6 +72,48 @@ def ensure_connected() -> dict:
     return result
 
 
+CANONICAL_GUIDANCE = (
+    " Strict Stickman CH01 canonical anatomy: exactly ONE single torso wearing plain light ocean blue shirt #8CCFE8, "
+    "exactly two simple navy stick arms, two simple navy stick legs, round white head with dark navy contour, "
+    "two solid black vertical oval eyes, simple open smile with coral tongue, absolutely NO eyebrows, NO teeth, NO white anime pupils. "
+    "Maintain identical camera perspective, framing, and furniture structure from the reference."
+)
+STYLE_NOTES = {
+    "canonical": "Match the attached canonical character and scene references.",
+    "story": "Match the attached character reference exactly: same face, age, hair, build and clothes. "
+             "Draw any other person only from the prompt text. Keep the scene reference framing if one is attached.",
+    "none": "No character reference is attached. Follow the prompt text for every person. "
+            "Keep the scene reference framing if one is attached.",
+}
+
+
+def queue_spec(test_case, prompt, ratio, out_dir, *, base_ref_path=None, base_media_id=None,
+               char_ref_path=None, char_media_id=None, canonical=False, no_character=False,
+               preserve="", change="", literal_text=""):
+    """One queue request. Exactly one of: the canonical mascot, a story character's own reference, or none."""
+    if no_character == bool(char_ref_path):
+        raise Blocked("CHARACTER_REFERENCE_REQUIRED: attach one character reference or declare no_character")
+    kind = "none" if no_character else ("canonical" if canonical else "story")
+    if kind == "canonical" and "Stickman CH01" not in prompt:
+        prompt = prompt + "\n" + CANONICAL_GUIDANCE
+    return {
+        "testCase": test_case,
+        "testName": f"Pipeline B-2 Generation: {test_case}",
+        "prompt": prompt,
+        "styleNote": STYLE_NOTES[kind],
+        "preserve": preserve,
+        "change": change,
+        "literalText": literal_text,
+        "ratio": ratio,
+        "outDir": str(Path(out_dir).resolve()),
+        "baseRefPath": str(Path(base_ref_path).resolve()) if base_ref_path else None,
+        "characterRefPath": str(Path(char_ref_path).resolve()) if char_ref_path else None,
+        "baseMediaId": base_media_id,
+        "charMediaId": char_media_id,
+        "noCharacter": bool(no_character),
+    }
+
+
 def generate_b2_image(
     prompt: str,
     ratio: str = "16:9",
@@ -79,6 +121,8 @@ def generate_b2_image(
     char_ref_path: str | Path | None = None,
     base_media_id: str | None = None,
     char_media_id: str | None = None,
+    canonical: bool = False,
+    no_character: bool = False,
     preserve: str = "",
     change: str = "",
     literal_text: str = "",
@@ -86,40 +130,19 @@ def generate_b2_image(
     test_case: str = "SCENE",
     timeout: float = 120.0
 ) -> dict:
-    """Generate image via B-2 Illustrator applet and harvest committed result."""
+    """Generate image via B-2 Illustrator applet and harvest committed result.
+
+    The caller decides the character reference; there is no mascot fallback,
+    because a story character drawn from the mascot reference becomes a stickman.
+    """
     require_queue_acceptance()
     ensure_connected()
 
-    canonical_mascot = (ROOT / "assets/characters/channel-mascot/reference-v1.png").resolve()
-    if char_ref_path is None and canonical_mascot.exists():
-        char_ref_path = canonical_mascot
-        char_media_id = char_media_id or "de94a39b-155f-4afe-acbb-d9d4b59ad532"
-
     target_dir = Path(out_dir).resolve() if out_dir else (ROOT / "experiments/b2_illustrator/results/controller").resolve()
     target_dir.mkdir(parents=True, exist_ok=True)
-
-    char_guidance = (
-        " Strict Stickman CH01 canonical anatomy: exactly ONE single torso wearing plain light ocean blue shirt #8CCFE8, "
-        "exactly two simple navy stick arms, two simple navy stick legs, round white head with dark navy contour, "
-        "two solid black vertical oval eyes, simple open smile with coral tongue, absolutely NO eyebrows, NO teeth, NO white anime pupils. "
-        "Maintain identical camera perspective, framing, and furniture structure from the reference."
-    )
-    enhanced_prompt = prompt if "Stickman CH01" in prompt else (prompt + "\n" + char_guidance)
-
-    spec = {
-        "testCase": test_case,
-        "testName": f"Pipeline B-2 Generation: {test_case}",
-        "prompt": enhanced_prompt,
-        "preserve": preserve,
-        "change": change,
-        "literalText": literal_text,
-        "ratio": ratio,
-        "outDir": str(target_dir),
-        "baseRefPath": str(Path(base_ref_path).resolve()) if base_ref_path else None,
-        "characterRefPath": str(Path(char_ref_path).resolve()) if char_ref_path else None,
-        "baseMediaId": base_media_id,
-        "charMediaId": char_media_id,
-    }
+    spec = queue_spec(test_case, prompt, ratio, target_dir, base_ref_path=base_ref_path, base_media_id=base_media_id,
+                      char_ref_path=char_ref_path, char_media_id=char_media_id, canonical=canonical,
+                      no_character=no_character, preserve=preserve, change=change, literal_text=literal_text)
 
     spec_file = target_dir / f".spec-{test_case}-{int(time.time() * 1000)}.json"
     spec_file.write_text(json.dumps(spec, indent=2), encoding="utf-8")
