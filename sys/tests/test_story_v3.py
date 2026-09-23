@@ -112,6 +112,40 @@ class StoryContractTests(unittest.TestCase):
             props=read(out/'props.json')
             self.assertEqual(props['scenes'],props['en_scenes'])
 
+    def test_vietnamese_16x9_needs_no_english(self):
+        """audio_language=vi: a 16:9 job reads Vietnamese; no narration_en/quote_en/anchor en."""
+        from scripts.story_plan import tracks, needs_english
+        b,c=fixture();b.update(aspect_ratio='16:9',audio_language='vi')
+        self.check(b,c)
+        self.assertEqual(tracks(b),[('vi','16:9')]);self.assertFalse(needs_english(b))
+        self.assertEqual(list(estimates(b,c)['languages']),['vi'])
+    def test_16x9_defaults_to_english(self):
+        from scripts.story_plan import tracks
+        b,c=fixture();b['aspect_ratio']='16:9'
+        self.assertEqual(tracks(b),[('en','16:9')])
+        with self.assertRaisesRegex(ContractError,'NARRATION_EN'):self.check(b,c)
+    def test_audio_language_only_for_16x9(self):
+        for ratio in ('9:16','dual'):
+            b,c=fixture();b.update(aspect_ratio=ratio,audio_language='vi')
+            with self.assertRaisesRegex(ContractError,'AUDIO_LANGUAGE'):validate_brief(ROOT,b)
+    def test_vietnamese_16x9_render_uses_vietnamese_timeline(self):
+        from types import SimpleNamespace
+        import adapters
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);out=root/'render';out.mkdir()
+            (root/'voice.wav').write_bytes(b'TEST')
+            write(root/'config.json',{})
+            audio={'wav':'voice.wav','duration':600,'segments':[]}
+            payloads={'content':{},'images':{},'audio':audio}
+            p=SimpleNamespace(root=root,path=lambda job,path:root/path,payload=lambda job,module:payloads[module],
+                              brief=lambda job:({'aspect_ratio':'16:9','audio_language':'vi'},1,'TEST'))
+            planned=[{'id':'SC01','title':'TEST','image':'voice.wav','start':0,'end':600}]
+            with patch('scripts.story_plan.timeline',return_value=planned) as build, patch('adapters.subprocess.run',side_effect=RuntimeError('STOP')):
+                with self.assertRaisesRegex(RuntimeError,'STOP'):adapters.render(p,'TEST',out)
+            self.assertEqual(build.call_args.args[-2:],('vi','16:9'))
+            props=read(out/'props.json')
+            self.assertEqual(props['audio_language'],'vi');self.assertNotIn('en_scenes',props)
+
     def test_measured_rates_are_not_rtf(self):
         b,c=fixture();audio={'duration':50};rates=calibrate_rates(c,audio,'TEST')
         self.assertAlmostEqual(rates['vi']['units_per_second'],sum(len(x['narration'].split()) for x in c['scenes'])/50,places=4)

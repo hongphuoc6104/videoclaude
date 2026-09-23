@@ -290,11 +290,10 @@ def prepare(p, job, stage):
         lines += [f"Tiếng Việt: {audio['duration']:.2f} giây", f"![Nghe tiếng Việt]({p.path(job, audio['wav'])})"]
         if audio.get('en'):
             lines += [f"Tiếng Anh: {audio['en']['duration']:.2f} giây", f"![Nghe Alba]({p.path(job, audio['en']['wav'])})"]
-        from scripts.story_plan import timeline
+        from scripts.story_plan import timeline, tracks
         payload = p.payload(job, 'content')
         if payload.get('schema_version') == '3.0':
-            ratio = p.brief(job)[0]['aspect_ratio']
-            timing = {lang: timeline(payload, images, audio, lang, r) for lang,r in ([('vi','9:16'),('en','16:9')] if ratio=='dual' else [('en','16:9')] if ratio=='16:9' else [('vi','9:16')])}
+            timing = {lang: timeline(payload, images, audio, lang, r) for lang,r in tracks(p.brief(job)[0])}
             write(folder / 'visual-timing.json', timing)
             data['assets'].append(relative(folder / 'visual-timing.json'))
             lines += ['Nhịp theo âm thanh (nội suy, cần nghe kiểm tra):', json.dumps(timing,ensure_ascii=False,indent=2), 'Kiểm tra từng hình: chữ đúng danh sách, không mã nội bộ/chữ thừa; đúng kiểu chữ, vị trí và tính liên tục.']

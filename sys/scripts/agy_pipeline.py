@@ -37,6 +37,9 @@ def generate(p,job):
  prompt+= '\nHướng dẫn nội dung:\n'+(p.root/'.agents/skills/vp-content/SKILL.md').read_text()
  prompt+='\nTrong chế độ adapter này, bộ điều phối thực hiện thao tác file và kiểm tra thay bạn; bạn chỉ tạo JSON, không chạy các lệnh trong skill.\n'
  prompt+=json.dumps({'brief':b,'brief_revision':revision,'brief_hash':bhash},ensure_ascii=False)
+ from scripts.story_plan import needs_english
+ if b.get('aspect_ratio')=='16:9' and not needs_english(b):
+  prompt+='\nBrief này đặt audio_language=vi: bản 16:9 chỉ đọc tiếng Việt. Không viết narration_en, quote_en hay anchor en.\n'
  write(out/'attempt.json',{'state':'running','job':job,'brief_hash':bhash,'started_at':time.time()})
  try:
   version = b.get('schema_version') == '3.0'

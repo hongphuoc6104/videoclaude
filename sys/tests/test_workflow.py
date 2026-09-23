@@ -348,6 +348,16 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(len(result['b']), 2)
         self.assertTrue(result['blocked'])
 
+    def test_renderer_vietnamese_16x9_needs_no_english_track(self):
+        code = """import {outputPlans} from './renderer/outputs.mjs';
+        const p={aspect_ratio:'16:9',audio_language:'vi',duration:900,scenes:[{id:'SC01',end:900}]};
+        console.log(JSON.stringify(outputPlans(p,false)));"""
+        plan = json.loads(subprocess.check_output(['node', '--input-type=module', '-e', code], cwd=ROOT, text=True))
+        self.assertEqual(len(plan), 1)
+        props = plan[0]['props']
+        self.assertEqual((props['width'], props['height'], props['audioSrc'], props['duration']), (1920, 1080, 'narration.wav', 900))
+        self.assertEqual(props['scenes'], [{'id': 'SC01', 'end': 900}])
+
     def test_media_review_puts_pending_character_comparison_first_and_never_claims_a_match(self):
         # AGENTS.md/docs/workflow.md: character comparison is folded into the media
         # gate and must be shown as pending, never implied to already match.

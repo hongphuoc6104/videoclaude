@@ -452,9 +452,10 @@ def retakes(p,j):
  return {r['scene_id']:r['n'] for r in rows}
 
 def needs_en(p,j):
- """16:9 exports carry the English track; 9:16 carries Vietnamese."""
+ """16:9 exports carry the English track unless the brief sets audio_language=vi."""
+ from scripts.story_plan import needs_english
  b=p.brief(j)
- return bool(b) and b[0].get('aspect_ratio') in ('dual','16:9')
+ return bool(b) and needs_english(b[0])
 
 def english(p,j,out,cfg,scenes):
  py=p.root/'.venv-en/bin/python'
@@ -532,7 +533,7 @@ def render(p,j,out):
  public=out/'public';public.mkdir(exist_ok=True);shutil.copy(p.path(j,snd['wav']),public/'narration.wav')
  en=snd.get('en')
  if en:shutil.copy(p.path(j,en['wav']),public/'narration_en.wav')
- from scripts.story_plan import timeline
+ from scripts.story_plan import timeline,tracks
  b=p.brief(j)[0] if p.brief(j) else None
  ratio=b.get('aspect_ratio','9:16') if b else '9:16'
  def render_scenes(lang, aspect):
@@ -547,15 +548,16 @@ def render(p,j,out):
    scene['image']=copy_asset(scene['image'])
    for beat in scene.get('images',[]):beat['src']=copy_asset(beat['src'])
   return planned
- scenes=render_scenes('en','16:9') if ratio=='16:9' else render_scenes('vi','9:16')
- props={'duration':snd['duration'],'scenes':scenes,'segments':snd['segments'],'cues':subtitle_cues(snd['segments']),'aspect_ratio':ratio,'render_concurrency':config(p).get('render_concurrency',4)}
+ lang,aspect=('vi','9:16') if ratio=='dual' else tracks(b)[0]
+ scenes=render_scenes(lang,aspect)
+ props={'duration':snd['duration'],'scenes':scenes,'segments':snd['segments'],'cues':subtitle_cues(snd['segments']),'aspect_ratio':ratio,'audio_language':lang,'render_concurrency':config(p).get('render_concurrency',4)}
  if en:
   props['en_duration']=en['duration']
-  props['en_scenes']=scenes if ratio=='16:9' else render_scenes('en','16:9')
+  props['en_scenes']=scenes if lang=='en' else render_scenes('en','16:9')
  write(out/'props.json',props)
  r=subprocess.run(['node',str(p.root/'renderer/render.mjs'),str(out.resolve())],cwd=p.root,capture_output=True,text=True,timeout=3600);(out/'render.log').write_text(r.stdout+'\n'+r.stderr)
  if r.returncode:raise Blocked('Render or layout check failed; see render.log: '+r.stderr[-500:])
- result={'video':rel(p,j,out/'video.mp4'),'stills':[rel(p,j,out/(s['id']+'.png')) for s in scenes],'layout_report':rel(p,j,out/'layout.json'),'duration':en['duration'] if ratio=='16:9' else snd['duration']}
+ result={'video':rel(p,j,out/'video.mp4'),'stills':[rel(p,j,out/(s['id']+'.png')) for s in scenes],'layout_report':rel(p,j,out/'layout.json'),'duration':en['duration'] if lang=='en' else snd['duration']}
  if (out/'video_16x9.mp4').exists():result['video_16x9']=rel(p,j,out/'video_16x9.mp4')
  if (out/'video_9x16.mp4').exists():result['video_9x16']=rel(p,j,out/'video_9x16.mp4')
  return result

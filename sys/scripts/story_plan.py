@@ -26,6 +26,22 @@ def normalize_brief(brief):
     return b
 
 
+def tracks(b):
+    """(language, ratio) of every exported video. 16:9 reads English unless the
+    brief sets audio_language='vi' (Vietnamese long-form channels); dual pairs
+    Vietnamese 9:16 with English 16:9."""
+    ratio = (b or {}).get('aspect_ratio', '9:16')
+    if ratio == 'dual':
+        return [('vi', '9:16'), ('en', '16:9')]
+    if ratio == '16:9':
+        return [(b.get('audio_language', 'en'), '16:9')]
+    return [('vi', '9:16')]
+
+
+def needs_english(b):
+    return any(lang == 'en' for lang, _ in tracks(b))
+
+
 def occurrence(text, anchor):
     start = 0
     for _ in range(anchor['occurrence']):
@@ -71,7 +87,7 @@ def validate_plan(b, c):
             seen.add(im['id'])
         used = {x['image_id'] for x in s['beats']}
         if used != seen: fail('IMAGE_USAGE', s['id'], 'Mỗi ảnh phải được sử dụng, không tham chiếu ảnh ngoài cảnh')
-        for lang in ['vi'] + (['en'] if b['aspect_ratio'] in ('dual','16:9') else []):
+        for lang in ['vi'] + (['en'] if needs_english(b) else []):
             text = s.get('narration_en' if lang == 'en' else 'narration', '')
             positions = []
             for beat in s['beats']:
@@ -122,7 +138,7 @@ def text_prompt(prompt, allowed, style):
 
 def estimates(b, c):
     result = {'languages': {}, 'warnings': [], 'status': 'estimated_not_measured'}
-    for lang in ['vi'] + (['en'] if b['aspect_ratio'] in ('dual','16:9') else []):
+    for lang in ['vi'] + (['en'] if needs_english(b) else []):
         rate = b['planning']['speech_rates'][lang]; rows = []
         for sc in c['scenes']:
             text = sc['narration_en' if lang=='en' else 'narration']

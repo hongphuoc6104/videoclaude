@@ -84,6 +84,12 @@
         "dual"
       ]
     },
+    "audio_language": {
+      "enum": [
+        "vi",
+        "en"
+      ]
+    },
     "facts_required": {
       "type": "boolean"
     },
