@@ -57,6 +57,7 @@
     "vocab.policy:check",
     "horror.policy:check"
   ],
+  "content_chunk_scenes": 6,
   "narration_styles": {
     "horror_story": "horror/narration-style.md"
   },

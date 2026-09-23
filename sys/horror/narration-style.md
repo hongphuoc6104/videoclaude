@@ -29,6 +29,7 @@ The narration is heard, not read, in one deep male Vietnamese TTS voice at a slo
 - Use full stops and commas for pauses. Use "…" at most twice per scene. No exclamation marks outside dialogue. No all-caps words. No stretched letters ("aaaa").
 - Dialogue: at most three short lines per scene, in quotation marks, with the speaker named before the line ("Bà cụ nói nhỏ: “…”"). One voice reads everything, so the listener must always know who speaks.
 - Write numbers and times as words ("hai giờ sáng").
+- Scene length follows the word target given in the call, which comes from the video length. It overrides the 256-character note in the general guide. Long scenes are fine because the voice is synthesized sentence by sentence, so make every sentence stand on its own.
 
 ## Vietnamese texture
 
