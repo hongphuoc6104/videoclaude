@@ -37,8 +37,8 @@ The audio step directs the voice from the text itself (`scripts/delivery.py`). T
 - Setup scenes are read slowest, climax scenes fastest with the tightest pauses, and the aftermath slow and heavy. Write the climax in shorter sentences so the faster pace fits.
 - "…" at the end of a phrase holds about a second of silence and ends the line there. Put it right before a reveal ("Tôi hé tia sáng… Nó đang mở.").
 - In escalation and climax scenes, a sentence of eight words or fewer gets silence on both sides. Use short lines for the scare line and the beat just before it.
-- A line in quotation marks is read apart from the narration and softer; a line ending in "!" stays at full level. Close the quote in the same scene.
-- The last sentence of an escalation or climax scene is read low and slow after a pause. Make it the scene's hook.
+- A line in quotation marks is read apart from the narration, with silence around it. Close the quote in the same scene.
+- The last sentence of an escalation or climax scene is read slower, after a pause. Make it the scene's hook.
 - A question gets a pause after it, so the listener has time to answer it in their head.
 - Scene length follows the word target given in the call, which comes from the video length. It overrides the 256-character note in the general guide. Long scenes are fine because the voice is synthesized sentence by sentence, so make every sentence stand on its own.
 

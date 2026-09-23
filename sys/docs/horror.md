@@ -49,11 +49,12 @@ Giọng máy đọc mọi câu cùng tốc độ, cùng độ to, cùng khoảng
 
   Cảnh gắn nhiều mã ý thì lấy kiểu mạnh nhất (thứ tự trong `priority`). Không khí truyện nhân thêm hệ số: `tense` nhanh hơn và nghỉ ít hơn; `slow_burn` và `folk` chậm hơn, nghỉ dài hơn.
 - **Chỉnh từng câu** theo dấu hiệu trong chữ:
-  - Thoại trong ngoặc kép được tách thành câu riêng, có khoảng lặng trước và sau, đọc nhỏ hơn 4 dB. Thoại kết bằng "!" giữ gần nguyên độ to.
+  - Thoại trong ngoặc kép được tách thành câu riêng, có khoảng lặng trước và sau.
   - Câu kết bằng "…" nghỉ khoảng 1,2 giây.
   - Câu hỏi nghỉ 1 giây.
   - Câu từ 8 tiếng trở xuống trong cảnh căng có khoảng lặng hai bên.
-  - Câu cuối của cảnh căng được đọc sau một khoảng lặng, nhỏ hơn 6 dB và chậm hơn.
+  - Câu cuối của cảnh căng được đọc sau một khoảng lặng và chậm hơn.
+  - Độ to mọi câu giữ bằng nhau (`gain_db` = 0). Bản thử ngày 2026-09-23 đọc thoại nhỏ hơn 4 dB và câu khép cảnh nhỏ hơn 6 dB. Người nghe thấy như âm lượng tự tụt, vì giọng máy không đổi chất giọng khi nói nhỏ. Chỉ bật lại khi có giọng thì thầm thật.
 - **Màu giọng** (`delivery.fx`): ấm phần trầm, bớt chói phần cao, thêm chút vang phòng nhỏ. Hiệu ứng này áp lúc hoàn thiện lời dẫn và không làm đổi độ dài file.
 - **Nhạc nền**: mỗi đoạn lời dẫn ghi `speech_end` (chỗ giọng dừng). Nhờ đó nền chỉ nhỏ xuống khi đang có tiếng nói và lớn dần lên trong các khoảng lặng. Tiếng động và nhịp hình cũng neo theo phần có tiếng nói.
 - **Thời lượng**: đọc có đạo diễn dài hơn, 1169 chữ mất 347 giây thay vì 299 giây. Brief kinh dị vì thế dùng tốc độ đã đo là 3,3 chữ/giây (đã tính khoảng lặng) để đặt số chữ mỗi cảnh.

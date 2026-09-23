@@ -127,7 +127,7 @@
     }
   },
   "delivery": {
-    "note": "Đạo diễn giọng kể (scripts/delivery.py). Mỗi cảnh lấy một kiểu đọc theo mã ý R1–R6; vài dấu hiệu trong câu chỉnh riêng từng câu: thoại trong ngoặc kép, câu ngắn ở cảnh căng, câu hỏi, dấu “…”, câu khép cảnh căng. speed là tốc độ so với giọng gốc; sentence/minor/tail là giây im lặng sau câu, sau vế và sau cảnh; gain_db là độ to so với lời kể. Chỉ đổi tốc độ, độ to, khoảng lặng; không đổi chữ.",
+    "note": "Đạo diễn giọng kể (scripts/delivery.py). Mỗi cảnh lấy một kiểu đọc theo mã ý R1–R6; vài dấu hiệu trong câu chỉnh riêng từng câu: thoại trong ngoặc kép, câu ngắn ở cảnh căng, câu hỏi, dấu “…”, câu khép cảnh căng. speed là tốc độ so với giọng gốc; sentence/minor/tail là giây im lặng sau câu, sau vế và sau cảnh; gain_db là độ to so với lời kể (để 0: giọng máy không đổi được chất giọng khi nói nhỏ, nên hạ âm lượng chỉ nghe như nhạc bị vặn nhỏ đi). Chỉ đổi tốc độ, độ to, khoảng lặng; không đổi chữ.",
     "roles": {"R1": "host_open", "R2": "setup", "R3": "rising", "R4": "climax", "R5": "aftermath", "R6": "host_close"},
     "priority": ["host_open", "host_close", "climax", "rising", "aftermath", "setup"],
     "styles": {
@@ -149,8 +149,8 @@
       "beat_pause": 1.2,
       "question_pause": 1.0,
       "short": {"max_words": 8, "pause_before": 0.9, "pause_after": 1.0},
-      "dialogue": {"pause_before": 0.55, "inner": 0.3, "pause_after": 0.9, "gain_db": -4, "shout_gain_db": -1},
-      "reveal": {"pause_before": 1.2, "gain_db": -6, "speed": 0.9}
+      "dialogue": {"pause_before": 0.55, "inner": 0.3, "pause_after": 0.9, "gain_db": 0, "shout_gain_db": 0},
+      "reveal": {"pause_before": 1.2, "gain_db": 0, "speed": 0.9}
     },
     "fx": "bass=g=2.5:f=140,treble=g=-2:f=6000,aecho=0.8:0.4:55|95:0.14|0.08"
   },
