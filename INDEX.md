@@ -26,7 +26,8 @@ Quy tắc ngôn ngữ: xem mục “Ngôn ngữ giao tiếp và prompt” trong 
 | `sys/experiments/b2_illustrator/` | B-2 vẫn đang được pipeline sử dụng; không phải thư mục rác |
 | `sys/reports/` | Báo cáo lịch sử, không phải quyết định duyệt hiện tại |
 | `sys/scratch/` | Dữ liệu tạm có thể chứa bằng chứng thật; không xóa hàng loạt |
-| `sys/.venv/`, `sys/.venv-tts/`, `sys/.venv-en/` | Môi trường điều phối, giọng Việt và giọng Anh |
+| `sys/.venv/`, `sys/.venv-gwen/` | Môi trường điều phối và giọng Việt Gwen-TTS (VieNeu `.venv-tts*` và giọng Anh `.venv-en` đã gỡ tạm; bản sao ở PC) |
+| `sys/assets/voices/` | Thư mục giọng đọc: giọng mẫu, câu chữ gốc và thông số (`voice.json`) |
 | `sys/node_modules/` | Phụ thuộc Node, Remotion và trình duyệt |
 | `sys/maintenance/layout-20260922/` | Bản sao mã trước chuyển đổi, checksum, ánh xạ và log; chỉ có local |
 | `.agents/`, `AGENTS.md`, `GEMINI.md` | Hướng dẫn agent tại gốc; các tên tương ứng trong sys là liên kết về đây |

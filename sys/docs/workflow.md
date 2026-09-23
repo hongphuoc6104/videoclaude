@@ -89,7 +89,7 @@ Job mới dùng brief/content 3.0: cảnh → hình → nhịp, chữ tạo cùn
 
 ## Giọng đọc và đầu ra
 
-Việt: Minh Quân Pro / VieNeu v3 Turbo ONNX FP32. Anh: Alba / Pocket TTS CPU INT8, tốc độ gốc. Bản 9:16 có tiếng Việt/phụ đề; 16:9 có tiếng Anh, timeline riêng và ẩn phụ đề. Dual tạo cả hai. Phụ đề cắt một lần ở Python (adapters.subtitle_cues); .srt và khung hình dùng chung danh sách cue nên luôn khớp nhau. Thời lượng kiểm tra theo brief, không nới bằng config. Tạo video AI bị khóa.
+Việt: Gwen-TTS nhân bản giọng `assets/voices/pham-tuyen-gwen` qua `.venv-gwen` (GPU CUDA, cần khoảng 2,5 GB VRAM, đọc từng câu, xuất 48 kHz). Anh: Alba / Pocket TTS CPU INT8, tốc độ gốc (cần cài lại `.venv-en`). Bản 9:16 có tiếng Việt/phụ đề; 16:9 có tiếng Anh, timeline riêng và ẩn phụ đề. Dual tạo cả hai. Phụ đề cắt một lần ở Python (adapters.subtitle_cues); .srt và khung hình dùng chung danh sách cue nên luôn khớp nhau. Thời lượng kiểm tra theo brief, không nới bằng config. Tạo video AI bị khóa.
 
 ## Dọn dẹp
 

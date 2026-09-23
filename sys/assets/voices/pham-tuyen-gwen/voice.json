@@ -1,0 +1,26 @@
+{
+ "note": "Voice chosen by the user on 2026-09-24 (sample 09): Gwen-TTS clone of the VieNeu 'Phạm Tuyên' preset. Not wired into the pipeline yet.",
+ "model": "g-group-ai-lab/gwen-tts-0.6B",
+ "model_license": "MIT (base Qwen/Qwen3-TTS-12Hz-0.6B-Base, Apache-2.0)",
+ "reference_audio": "ref.wav",
+ "reference_source": "VieNeu-TTS v3 Turbo preset 'Phạm Tuyên' (Apache-2.0)",
+ "reference_text": "Người ta kể rằng, căn nhà cuối xóm ấy đã bỏ hoang từ rất lâu. Mỗi đêm, khi gió nổi lên, cánh cửa gỗ lại kẽo kẹt như có ai đang đẩy nhẹ.",
+ "language": "Vietnamese",
+ "load": {
+  "dtype": "bfloat16",
+  "attn_implementation": "sdpa"
+ },
+ "generate": {
+  "temperature": 0.7,
+  "top_k": 20,
+  "top_p": 0.9,
+  "max_new_tokens": 2048,
+  "repetition_penalty": 2.0,
+  "subtalker_do_sample": true,
+  "subtalker_temperature": 0.1,
+  "subtalker_top_k": 20,
+  "subtalker_top_p": 1.0
+ },
+ "runtime": ".venv-gwen (torch 2.8.0 cu128, qwen-tts 0.1.1); peak VRAM 2.5 GB on RTX 3050 4 GB",
+ "sample": "mau-09.mp3 (text and pauses in mau-09-passage.json)"
+}

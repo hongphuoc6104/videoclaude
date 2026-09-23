@@ -529,15 +529,17 @@ def english(p,j,out,cfg,scenes):
  return {'engine':meta['engine'],'voice':meta['voice'],'wav':rel(p,j,combined),'duration':cursor,'scenes':done}
 
 def tts_python(root,cfg):
- """.venv-tts-gpu (torch cu126 + VieNeu) when installed and tts_device allows a
- GPU; the worker itself still falls back to ONNX/CPU if CUDA is unusable."""
+ """.venv-gwen for tts_engine=gwen. VieNeu: .venv-tts-gpu (torch cu126) when
+ installed and tts_device allows a GPU; the worker itself still falls back to
+ ONNX/CPU if CUDA is unusable."""
+ if cfg.get('tts_engine','vieneu')=='gwen':return root/'.venv-gwen/bin/python'
  gpu=root/'.venv-tts-gpu/bin/python'
  return gpu if cfg.get('tts_device','auto')!='cpu' and gpu.exists() else root/'.venv-tts/bin/python'
 
 def audio(p,j,out):
  content=p.payload(j,'content');cfg=config(p);g=cfg.get('tts_pause',DEFAULT_PAUSE)
  py=tts_python(p.root,cfg)
- if not py.exists():raise Blocked('Install local TTS environment')
+ if not py.exists():raise Blocked(f'Install local TTS environment ({py.parent.parent.name})')
  retake=retakes(p,j)
  scenes=[{'scene_id':s['id'],'narration':s['narration'],'texts':chunks(s['narration']),'retake':retake.get(s['id'],0)} for s in content['scenes']]
  b=p.brief(j)[0] if p.brief(j) else {}
@@ -553,7 +555,7 @@ def audio(p,j,out):
   for k,sc in enumerate(scenes):
    sc['gaps']=[gap_after(t,g) for t in sc['texts'][:-1]]
    sc['tail']=g.get('tail',DEFAULT_PAUSE['tail']) if k==len(scenes)-1 else g.get('para',DEFAULT_PAUSE['para'])
- keys=('tts_voice','tts_temperature','tts_top_p','tts_max_chars','tts_scene_synthesis','tts_backend','tts_precision','tts_speed','tts_device','tts_gpu_dtype','tts_batch_size')
+ keys=('tts_engine','tts_check_retries','tts_voice','tts_temperature','tts_top_p','tts_max_chars','tts_scene_synthesis','tts_backend','tts_precision','tts_speed','tts_device','tts_gpu_dtype','tts_batch_size')
  # Job-level cache dir (not per-revision): pilot.run() always mkdirs a fresh
  # revisions/audio/N, so a cache rooted there could never hit across runs.
  # tts_worker.py now keys cache entries by content hash (text+settings+model

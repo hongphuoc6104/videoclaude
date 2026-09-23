@@ -1,0 +1,8 @@
+[
+ {"text": "Đến đêm thứ tám, ngón tay tôi sẩy trượt làm nắp đèn kêu cạch một tiếng.", "mood": "calm", "style_en": "low, calm storyteller voice, slow", "pause": 0.8},
+ {"text": "Ông lão giật mình ngồi bật dậy trong bóng tối mịt mùng:", "mood": "tense", "style_en": "tense, slightly faster, holding breath", "pause": 0.6},
+ {"text": "“Ai đó?”", "mood": "afraid_whisper", "style_en": "frightened old man whispering, trembling", "pause": 1.2},
+ {"text": "Tôi nín thở, đứng chôn chân suốt một tiếng đồng hồ.", "mood": "whisper", "style_en": "whispering, breathless, very quiet", "pause": 1.0},
+ {"text": "Khi tôi khẽ hé một tia sáng mảnh như sợi tơ nhện, luồng sáng ấy rọi thẳng vào con mắt kền kền.", "mood": "rising", "style_en": "slow, tense, building dread", "pause": 1.3},
+ {"text": "Nó đang mở trừng trừng trong đêm, đục ngầu và lạnh ngắt.", "mood": "afraid_whisper", "style_en": "terrified whisper, trembling with fear", "pause": 1.0}
+]
