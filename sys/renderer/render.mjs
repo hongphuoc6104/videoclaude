@@ -1,5 +1,6 @@
 import {bundle} from '@remotion/bundler';
-import {openBrowser, selectComposition, renderMedia, renderStill} from '@remotion/renderer';
+import {openBrowser, selectComposition, renderMedia} from '@remotion/renderer';
+import {execFileSync} from 'node:child_process';
 import {chromium} from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -76,30 +77,21 @@ try {
 
   if (layoutResult.failures.length) throw Error('Text overflow');
 
-  // Render representative stills
-  const compStills = await selectComposition({
-    serveUrl: url,
-    id: 'Pilot',
-    inputProps: plans[0].props,
-    puppeteerInstance: browser
-  });
-
-  for (const scene of plans[0].props.scenes) {
-    await renderStill({
-      serveUrl: url,
-      composition: compStills,
-      inputProps: plans[0].props,
-      puppeteerInstance: browser,
-      frame: Math.min(compStills.durationInFrames - 1, Math.round((scene.start + scene.end) / 2 * 30)),
-      output: path.join(dir, scene.id + '.png')
-    });
-  }
-
+  let first = null;
   for (const plan of plans) {
     const composition = await selectComposition({serveUrl: url, id: 'Pilot', inputProps: plan.props, puppeteerInstance: browser});
     await renderMedia({serveUrl: url, composition, inputProps: plan.props, puppeteerInstance: browser,
       codec: 'h264', hardwareAcceleration: 'if-possible', audioCodec: 'aac',
       concurrency: props.render_concurrency || 4, outputLocation: path.join(dir, plan.file)});
+    first ??= composition;
+  }
+
+  // Representative stills: the middle frame of each scene, cut from the finished video.
+  // renderStill reloaded the whole composition per scene (about 45 s each on a 20-minute video).
+  for (const scene of plans[0].props.scenes) {
+    const frame = Math.min(first.durationInFrames - 1, Math.round((scene.start + scene.end) / 2 * first.fps));
+    execFileSync('ffmpeg', ['-v', 'error', '-y', '-ss', (frame / first.fps).toFixed(3), '-i', path.join(dir, plans[0].file),
+      '-frames:v', '1', path.join(dir, scene.id + '.png')]);
   }
   if (plans[0].file !== 'video.mp4') fs.copyFileSync(path.join(dir, plans[0].file), path.join(dir, 'video.mp4'));
 

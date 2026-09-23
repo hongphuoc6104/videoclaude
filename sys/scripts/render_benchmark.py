@@ -119,7 +119,8 @@ def main():
     report = {**machine(), 'ratio': a.ratio, 'minutes': a.minutes, 'render_concurrency': concurrency, **info,
               'ok': r.returncode == 0 and video.exists(),
               'prepare_seconds': round(prepared - started, 1), 'render_seconds': round(render, 1),
-              'stills_seconds': round(stills[-1].stat().st_mtime - prepared, 1) if stills else None,
+              # stills are cut from the finished video with ffmpeg, after the render
+              'stills_seconds': round(stills[-1].stat().st_mtime - video.stat().st_mtime, 1) if stills and video.exists() else None,
               'realtime_factor': round(render / (a.minutes * 60), 2),
               'video_seconds': float(probe.get('format', {}).get('duration', 0)) or None,
               'video_mb': round(video.stat().st_size / 1e6, 1) if video.exists() else None,
