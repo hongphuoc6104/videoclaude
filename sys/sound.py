@@ -21,7 +21,8 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent
 LIBRARY = ROOT / 'assets/audio/library.json'
 LICENSE = 'CC0-1.0'
-GAIN = {'bed_gap': 10 ** (-20 / 20), 'bed_speech': 10 ** (-31 / 20), 'sfx': 10 ** (-10 / 20)}
+# Bed peaks at 0.5 (about -18 dBFS RMS): with these gains it sits ~16 dB under a -19 dBFS voice in pauses and ~25 dB under it while speaking.
+GAIN = {'bed_gap': 10 ** (-16 / 20), 'bed_speech': 10 ** (-25 / 20), 'sfx': 10 ** (-10 / 20)}
 
 
 class SoundError(ValueError):
