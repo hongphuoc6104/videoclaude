@@ -38,7 +38,7 @@ Sửa ảnh: reject media với --scene/--character; sửa giọng: --part audio
 Không bỏ ý, bỏ cảnh, rút thời lượng hoặc tự thay công cụ. Không dùng API trả phí. Tạo video AI bị khóa; chỉ dựng video từ ảnh và âm thanh. Cấu hình hiện bật flow_batch và flow_queue_trial_enabled theo ngoại lệ thử tích hợp đã được yêu cầu; acceptance vẫn chưa đạt sản xuất. Không mở rộng ngoại lệ hoặc tự đổi cấu hình khi chạy job.
 Flow giữ kiểm tra model/tham chiếu và nhật ký. Với flow_require_ui_evidence=false, chi phí là giả định do người dùng chỉ định, không ghi đã xác minh. Timeout sau gửi phải flow-reconcile bằng bằng chứng thật; không gửi trùng.
 Trong review, chỉ dừng xin duyệt ở content/media/video. Bước chuẩn bị ảnh nhân vật là nội bộ; so sánh nhân vật được gộp vào media. Không tuyên bố đã khớp trước khi kiểm tra.
-Trong auto, job không đạt cần được sửa có kiểm soát hoặc đưa vào needs_attention; lỗi đăng nhập/CAPTCHA/hạn mức dừng hàng đợi. Không lặp vô hạn.
+Trong auto, job không đạt cần được sửa có kiểm soát hoặc đưa vào needs_attention; lỗi đăng nhập/CAPTCHA dừng hàng đợi; hết hạn mức tạo ảnh (Flow trả lỗi, không có ảnh) thì hàng đợi ghi profile đó vào sổ hết hạn mức và chuyển sang profile kế tiếp trong browser-profiles.json đã được cấu hình tool_url, chỉ gửi lại những yêu cầu chưa sinh ảnh; hết mọi profile thì dừng. Không lặp vô hạn.
 Khi chờ duyệt: đưa link review.md, revision và lỗi còn lại. Không chạy phần phụ thuộc trước duyệt.
 Không coi dữ liệu test là sản phẩm thật. Chỉ hoàn tất khi video có quyết định hợp lệ của người hoặc máy theo chế độ job.
 Job cũ không có workflow v3 là lịch sử chỉ đọc; không sửa integrity baseline để chạy tiếp. Tạo job mới với brief đã kiểm tra.

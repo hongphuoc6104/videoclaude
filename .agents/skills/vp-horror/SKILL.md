@@ -26,4 +26,4 @@ Khi tiếp tục job, không start/draw lại. Chạy `python3 pilot.py status J
 3. Sau quyết định media hợp lệ, đọc `vp-video/SKILL.md`; chạy `python3 pilot.py run JOB video`.
 4. Khi video đã có quyết định hợp lệ và xuất thành công, chạy `python3 horror/bank.py mark JOB`. Trả đường dẫn MP4 thật trong `video/<job>/`.
 
-Review dừng đúng ba điểm content/media/video. Auto dùng báo cáo xem/nghe artifact thật; unsupported hoặc lỗi đăng nhập/CAPTCHA/hạn mức thì dừng. Job bị huỷ trước khi xong: `python3 horror/bank.py release JOB` để trả truyện về kho.
+Review dừng đúng ba điểm content/media/video. Auto dùng báo cáo xem/nghe artifact thật; unsupported hoặc lỗi đăng nhập/CAPTCHA thì dừng; hết hạn mức tạo ảnh thì hàng đợi tự chuyển profile kế tiếp đã cấu hình, hết mọi profile mới dừng. Job bị huỷ trước khi xong: `python3 horror/bank.py release JOB` để trả truyện về kho.

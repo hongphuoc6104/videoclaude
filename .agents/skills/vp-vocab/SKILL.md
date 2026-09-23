@@ -20,7 +20,7 @@ Khi tiếp tục job, không start/draw lại. Chạy `python3 pilot.py status J
 3. Sau quyết định media hợp lệ, đọc `vp-video/SKILL.md`; chạy `python3 pilot.py run JOB video`.
 4. Khi video đã có quyết định hợp lệ và xuất thành công, chạy `python3 vocab/bank.py mark JOB`. Trả đường dẫn MP4 thật trong `video/<job>/`, không gán revision 1.
 
-Review dừng đúng ba điểm content/media/video, đưa review.md và revision. Auto dùng báo cáo xem/nghe artifact thật; unsupported hoặc lỗi đăng nhập/CAPTCHA/hạn mức thì dừng, không tự pass. Skill hướng dẫn agent điều phối CLI, không gọi lớp Pilot để vượt gate.
+Review dừng đúng ba điểm content/media/video, đưa review.md và revision. Auto dùng báo cáo xem/nghe artifact thật; unsupported hoặc lỗi đăng nhập/CAPTCHA thì dừng, không tự pass; hết hạn mức tạo ảnh thì tự chuyển profile kế tiếp đã cấu hình, hết mọi profile mới dừng. Skill hướng dẫn agent điều phối CLI, không gọi lớp Pilot để vượt gate.
 
 Lỗi hoặc yêu cầu sửa: dùng reject đúng stage/phạm vi rồi resume; giữ journal ambiguous và đối chiếu trước gửi lại. Không mark chỉ vì render thành công. Không dùng --force để hoàn tất job pipeline bị chặn.
 
