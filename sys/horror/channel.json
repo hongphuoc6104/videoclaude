@@ -28,6 +28,13 @@
       "flag": "--length",
       "choices": [
         {
+          "value": "4-6",
+          "label": "4–6 phút (10 cảnh) — bản thử để xem kênh",
+          "min_seconds": 240,
+          "max_seconds": 360,
+          "scene_count": 10
+        },
+        {
           "value": "10-15",
           "label": "10–15 phút (20 cảnh)",
           "min_seconds": 600,

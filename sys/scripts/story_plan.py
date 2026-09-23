@@ -82,8 +82,9 @@ def validate_plan(b, c):
                 fail('CHARACTER_REF', im['id'], 'Nhân vật ảnh không thuộc cảnh')
             visible = ' '.join(im[k] for k in ['description','preserve','change'])
             visible += ' ' + ' '.join(x['text']+' '+x['placement']+' '+x['object'] for x in im['visible_text'])
-            if any(re.search(r'(?<!\w)'+re.escape(code)+r'(?!\w)', visible, re.I) for code in internal):
-                fail('INTERNAL_LABEL', im['id'], 'Mã nội bộ không được đưa vào mô tả hình/chữ')
+            leaked = [code for code in internal if re.search(r'(?<!\w)'+re.escape(code)+r'(?!\w)', visible, re.I)]
+            if leaked:
+                fail('INTERNAL_LABEL', im['id'], 'Mã nội bộ không được đưa vào mô tả hình/chữ: '+', '.join(dict.fromkeys(leaked)))
             seen.add(im['id'])
         used = {x['image_id'] for x in s['beats']}
         if used != seen: fail('IMAGE_USAGE', s['id'], 'Mỗi ảnh phải được sử dụng, không tham chiếu ảnh ngoài cảnh')

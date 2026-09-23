@@ -54,7 +54,7 @@ class HorrorBankTests(unittest.TestCase):
                          '--length <lựa chọn> --mood <lựa chọn> --mode <lựa chọn>')
 
     def test_interactive_prompts_fill_missing_choices(self):
-        answers = io.StringIO('2\n3\n1\n4\n1\n2\n')  # 9:16, 20-30, auto seed, folk, third, auto mode
+        answers = io.StringIO('2\n4\n1\n4\n1\n2\n')  # 9:16, 20-30, auto seed, folk, third, auto mode
         with patch('sys.stdin', answers), patch('sys.stderr', io.StringIO()):
             result = self.draw([], interactive=True)
         self.assertEqual(result['choices'], {'aspect_ratio': '9:16', 'length': '20-30', 'seed': 'auto',
