@@ -30,6 +30,15 @@ def genre_style(root,b):
  ref=read(root/'config.json').get('narration_styles',{}).get(b.get('video_type'))
  return '\nGenre narration guide for video_type '+b['video_type']+' (follow it together with the brief):\n'+(root/ref).read_text() if ref else ''
 
+def sfx_note(b):
+ if not (b.get('sound') or {}).get('sfx'):return '\nKhông thêm trường sfx vào cảnh.\n'
+ import sound
+ lib=sound.library()
+ menu='; '.join(f"{k}: {v['description']}" for k,v in lib.items() if v['kind']=='sfx')
+ return ('\nSound effects (optional field sfx on a scene, at most one per scene and only where the narration itself describes '
+         'that sound; most scenes have none). Use only these CC0 ids: '+menu+'. Anchor each cue like a beat: the exact words '
+         'in the narration where the sound happens, with occurrence; add an en anchor only when narration_en exists.\n')
+
 def generate(p,job):
  p.gate(job,'content')
  if p.rows(job)['content']['state'] not in ['pending','needs_changes','blocked','stale']:
@@ -45,6 +54,7 @@ def generate(p,job):
  from scripts.story_plan import needs_english
  if b.get('aspect_ratio')=='16:9' and not needs_english(b):
   prompt+='\nBrief này đặt audio_language=vi: bản 16:9 chỉ đọc tiếng Việt. Không viết narration_en, quote_en hay anchor en.\n'
+ prompt+=sfx_note(b)
  write(out/'attempt.json',{'state':'running','job':job,'brief_hash':bhash,'started_at':time.time()})
  try:
   version = b.get('schema_version') == '3.0'

@@ -585,10 +585,19 @@ def render(p,j,out):
  if en:
   props['en_duration']=en['duration']
   props['en_scenes']=scenes if lang=='en' else render_scenes('en','16:9')
+ if b and b.get('sound'):
+  # CC0 bed and effects mixed under each narration track; the approved narration files stay untouched.
+  import sound
+  used=[];props['audio_files']={}
+  for language,name,wav in [('vi','mix.wav','narration.wav')]+([('en','mix_en.wav','narration_en.wav')] if en else []):
+   used+=sound.build(content,b,snd,language,public/wav,public/name)
+   props['audio_files'][language]=name
+  write(out/'sound.json',{'license':sound.LICENSE,'plan':b['sound'],'items':list({x['id']:x for x in used}.values())})
  write(out/'props.json',props)
  r=subprocess.run(['node',str(p.root/'renderer/render.mjs'),str(out.resolve())],cwd=p.root,capture_output=True,text=True,timeout=3600);(out/'render.log').write_text(r.stdout+'\n'+r.stderr)
  if r.returncode:raise Blocked('Render or layout check failed; see render.log: '+r.stderr[-500:])
  result={'video':rel(p,j,out/'video.mp4'),'stills':[rel(p,j,out/(s['id']+'.png')) for s in scenes],'layout_report':rel(p,j,out/'layout.json'),'duration':en['duration'] if lang=='en' else snd['duration']}
  if (out/'video_16x9.mp4').exists():result['video_16x9']=rel(p,j,out/'video_16x9.mp4')
  if (out/'video_9x16.mp4').exists():result['video_9x16']=rel(p,j,out/'video_9x16.mp4')
+ if (out/'sound.json').exists():result['sound_manifest']=rel(p,j,out/'sound.json')
  return result

@@ -42,6 +42,15 @@ Một lần gọi agy chỉ có tối đa 180 giây, không đủ viết 20–40
 
 Không tự thử lại. Nếu một lượt hết giờ hoặc bị chặn, chạy lại `pilot.py run JOB content`: các lượt đã xong của lần trước (cùng brief, cùng phản hồi, cùng prompt) được dùng lại, chỉ gọi phần còn thiếu. Bằng chứng từng lượt nằm trong `agent-attempts/<lần chạy>/long-script.json`.
 
+## Nhạc nền và tiếng động (chỉ CC0)
+
+- Thư viện `assets/audio/library.json` chỉ nhận mục có `license: "CC0-1.0"`; `sound.py` từ chối mọi giấy phép khác.
+- Có sẵn 3 nền (`drone`, `wind`, `pulse`) và 5 tiếng động (`low_hit`, `heartbeat`, `knock`, `gust`, `creak`). Tất cả **tạo bằng code** trong `sound.py` từ công thức và seed cố định, không tải gì từ mạng. Dự án phát hành chúng theo CC0-1.0.
+- Muốn thêm file CC0 thật (ví dụ tiếng mưa): đặt WAV 16-bit vào `assets/audio/cc0/`, thêm mục `source: "file"` kèm `author`, `source_url`, `sha256`. Thiếu một trường là bị từ chối.
+- Brief truyện kinh dị có `sound: {bed, sfx}`. Nền theo không khí đã chọn (`channel.json` → `moods.*.music`). Người viết kịch bản được phép gắn tối đa một tiếng động mỗi cảnh, chỉ ở chỗ lời dẫn tả đúng âm thanh đó, và neo vào nguyên văn như nhịp hình.
+- Trộn ở bước video (`adapters.render` → `sound.build`): nền lặp suốt video, tự nhỏ xuống khi có lời đọc (khoảng −31 dB, lúc nghỉ −20 dB), vào và ra từ từ; tiếng động đặt đúng câu được neo. File lời dẫn đã duyệt giữ nguyên; video dùng `mix.wav`. Mỗi lần render ghi `sound.json` liệt kê mọi âm thanh đã dùng kèm giấy phép và nguồn.
+- Nghe thử một âm thanh: `python3 sound.py preview drone /tmp/drone.wav`. Kiểm tra thư viện: `python3 sound.py check`.
+
 ## Lệnh khác
 
 ```bash

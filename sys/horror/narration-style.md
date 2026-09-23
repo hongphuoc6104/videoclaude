@@ -56,6 +56,11 @@ The narration is heard, not read, in one deep male Vietnamese TTS voice at a slo
 - `folk`: tell it like an old village tale, with warnings, village customs, weather, water and trees. The tone is sad more than shocking. The climax is quiet but heavy.
 - `tense`: get into the story fast. Every scene has a turn. There are two moments where escape seems possible, and short sentences under pressure. The climax lasts longer than in the other moods.
 
+## Sound
+
+- A quiet bed plays under the whole video; do not describe music in the narration.
+- A scene may carry one `sfx` cue from the listed CC0 ids, only where the narration itself names that sound ("ba tiếng gõ", "tiếng cửa kẽo kẹt"). Anchor it on those words. Most scenes have none; silence is part of the fear.
+
 ## Images for horror scenes
 
 - The host appears only in images of the first and last scene. List the host in those scenes' `character_ids`, and nowhere else.

@@ -31,6 +31,10 @@
     },
     "aspect_ratio": {
       "type": "string"
+    },
+    "sound_manifest": {
+      "type": "string",
+      "minLength": 1
     }
   },
   "required": [

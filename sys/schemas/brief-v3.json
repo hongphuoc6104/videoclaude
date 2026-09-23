@@ -90,6 +90,26 @@
         "en"
       ]
     },
+    "sound": {
+      "type": "object",
+      "properties": {
+        "bed": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "sfx": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "bed",
+        "sfx"
+      ],
+      "additionalProperties": false
+    },
     "facts_required": {
       "type": "boolean"
     },

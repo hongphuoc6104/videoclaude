@@ -250,6 +250,8 @@ def make_brief(seed, cfg, choice):
     }
     if ratio == '16:9':
         brief['audio_language'] = 'vi'
+    # CC0 bed follows the chosen mood; effects are placed by the script on the words that describe them.
+    brief['sound'] = {'bed': mood['music'], 'sfx': True}
     return brief
 
 

@@ -34,6 +34,10 @@ def validate_brief(root,b):
  if len(ids)!=len(set(ids)): errors.append(error('DUPLICATE','sources','Trùng mã nguồn','Dùng mã riêng.'))
  if b.get('audio_language') and b['aspect_ratio']!='16:9':
   errors.append(error('AUDIO_LANGUAGE','audio_language','Chỉ chọn ngôn ngữ đọc cho bản 16:9','Bỏ audio_language: 9:16 đọc tiếng Việt, dual đọc cả hai.'))
+ if b.get('sound'):
+  import sound
+  if b['sound']['bed'] is not None and b['sound']['bed'] not in sound.ids('bed'):
+   errors.append(error('SOUND','sound/bed','Nhạc nền không có trong thư viện CC0','Chọn một trong: '+', '.join(sound.ids('bed'))+' hoặc null.'))
  if b['facts_required'] and not b['sources']:
   errors.append(error('SOURCE_REQUIRED','sources','Chưa cung cấp dữ kiện','Bổ sung tài liệu và dữ kiện trước khi viết.'))
  if errors: raise ContractError(errors)

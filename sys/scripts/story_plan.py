@@ -98,6 +98,16 @@ def validate_plan(b, c):
         for beat in s['beats']:
             if beat['id'] in all_beats: fail('BEAT_ID', s['id'], 'Mã nhịp trùng')
             all_beats.add(beat['id'])
+        if s.get('sfx'):
+            import sound
+            if not (b.get('sound') or {}).get('sfx'):
+                fail('SFX', s['id'], 'Brief không bật tiếng động')
+            for cue in s['sfx']:
+                if cue['id'] not in sound.ids('sfx'):
+                    fail('SFX', s['id'], 'Tiếng động không có trong thư viện CC0: '+cue['id'])
+                for lang in ['vi'] + (['en'] if needs_english(b) else []):
+                    try: occurrence(s.get('narration_en' if lang == 'en' else 'narration', ''), cue['anchor'][lang])
+                    except (ValueError, KeyError): fail('SFX_ANCHOR', s['id'], 'Thiếu/sai điểm neo tiếng động '+lang)
     source = {x['id']: x for x in b['sources']}
     scene_by_id = {x['id']: x for x in scenes}
     for claim in c['claims']:
@@ -184,6 +194,7 @@ def review_plan(b, c, previous=None, requests=()):
            'Nhịp kể: '+plan['pacing'], 'Giả định cần kiểm tra:\n'+bullets(plan['assumptions']),
            f"{len(c['scenes'])} cảnh · {sum(len(s['images']) for s in c['scenes'])} hình logic · {sum(len(s['beats']) for s in c['scenes'])} nhịp",
            'Dual tạo hai bộ hình riêng cho hai tỷ lệ.' if b['aspect_ratio']=='dual' else 'Tỷ lệ: '+b['aspect_ratio'],
+           'Âm thanh: '+(('nhạc nền '+str(b['sound']['bed'] or 'không có')+(', có tiếng động theo lời dẫn' if b['sound']['sfx'] else ', không tiếng động')) if b.get('sound') else 'chỉ lời dẫn')+' (thư viện CC0, trộn ở bước video)',
            '## Thời lượng dự kiến (chưa phải WAV)']
     for lang, data in timing['languages'].items():
         lines.append(f"{lang.upper()}: {data['min']}–{data['max']} giây. Cơ sở: {data['rate']['source']}")
@@ -201,6 +212,8 @@ def review_plan(b, c, previous=None, requests=()):
         for beat in scene['beats']:
             anchors='; '.join(lang+': “'+a['quote']+'” (lần '+str(a['occurrence'])+')' for lang,a in beat['anchor'].items())
             lines.append('Nhịp '+beat['id']+' → '+beat['image_id']+' · '+beat['effect']+' · '+anchors+' · '+beat['purpose'])
+        for cue in scene.get('sfx',[]):
+            lines.append('Tiếng động '+cue['id']+' tại '+'; '.join(lang+': “'+a['quote']+'”' for lang,a in cue['anchor'].items()))
     lines += ['## Nhân vật', bullets(x['name']+': '+x['appearance']+'; '+x['outfit'] for x in c['characters'])]
     if any(x.get('quote_en') for x in c['coverage']):
         lines += ['## Đối chiếu ý bắt buộc (Việt / Anh)',

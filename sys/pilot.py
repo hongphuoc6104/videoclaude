@@ -31,7 +31,7 @@ class Pilot:
    return {r['module']:dict(r) for r in self.db.execute('SELECT * FROM modules WHERE job=?',(j,))}
  def protected(self):
   paths=[self.root/x for x in ['pilot.py','workflow.py','machine_review.py','content_contract.py','image_pipeline.py','prompt_templates.py','adapters.py','tts_worker.py','config.json','AGENTS.md','GEMINI.md','package.json','package-lock.json','requirements.txt','tts-requirements.lock','tts-gpu-requirements.lock','en-requirements.lock']]
-  paths.append(self.root/'b2_bridge.py')
+  paths += [self.root/'b2_bridge.py', self.root/'sound.py', self.root/'assets/audio/library.json']
   paths += list((self.root/'vocab').glob('*.py'))
   paths += list((self.root/'horror').glob('*.py'))
   engine = self.root/'experiments/b2_illustrator'
@@ -241,6 +241,7 @@ class Pilot:
     if abs(d16-en['duration'])>.1:raise Blocked('16:9 video does not match the English narration length')
    if p.get('video_16x9'):files.append(p['video_16x9'])
    if p.get('video_9x16'):files.append(p['video_9x16'])
+   if p.get('sound_manifest'):files.append(p['sound_manifest'])
   for s in files:
    if not self.path(j,s).is_file() or not self.path(j,s).stat().st_size:raise Blocked('Missing artifact: '+s)
   return files

@@ -94,6 +94,7 @@ class HorrorBankTests(unittest.TestCase):
         self.assertIn(cfg['moods']['slow_burn']['tone'], seeded['tone'])
         self.assertIn(cfg['moods']['slow_burn']['pacing'], seeded['planning']['pacing'])
         self.assertIn(bank.MOOD_TAG + 'slow_burn — ' + cfg['moods']['slow_burn']['label'], seeded['planning']['domain_requirements'])
+        self.assertEqual(seeded['sound'], {'bed': cfg['moods']['slow_burn']['music'], 'sfx': True})
         args = bank.parser().parse_args(['draw', 'job-2', '--ratio', '9:16', '--length', '10-15', '--seed', 'H002', '--mode', 'review'] + REST)
         chosen = json.loads(Path(bank.cmd_draw(args)['brief']).read_text())
         self.assertIn(cfg['moods']['folk']['tone'], chosen['tone'])
