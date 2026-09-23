@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {prepareRequests} from './queue-runner.mjs';
+import {prepareRequests,journalByQueueId,toolStateBlockers} from './queue-runner.mjs';
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'vp-queue-'));
 const file=path.join(dir,'ref.png');fs.writeFileSync(file,'reference');
 const request={testCase:'scene-1',prompt:'Borrow a book',ratio:'9:16',outDir:dir,characterRefPath:file,charMediaId:'mascot-id'};
@@ -33,3 +33,18 @@ test('a story character reference carries its own note into the identity',()=>{
  assert.equal(story.character.mediaId,'story-id');assert.equal(story.identity.styleNote,'Match the attached character reference exactly.');
 });
 test.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+
+function journal(folder,name,events){fs.writeFileSync(path.join(folder,name+'.ndjson'),events.map(e=>JSON.stringify(e)).join('\n')+'\n');}
+test('tool state may be dropped only when every item is on disk or explicitly released',()=>{
+ const store=fs.mkdtempSync(path.join(os.tmpdir(),'vp-journal-'));
+ journal(store,'a',[{state:'prepared'},{event:'submitting',state:'submitting',queueId:'REQ-A'},{event:'generated',state:'generated'},{event:'collected',state:'collected'}]);
+ journal(store,'b',[{state:'prepared'},{event:'submitting',state:'submitting',queueId:'REQ-B'},{event:'unknown',state:'unknown'}]);
+ journal(store,'c',[{state:'prepared'},{event:'submitting',state:'submitting',queueId:'REQ-C'},{event:'generated',state:'generated'}]);
+ const known=journalByQueueId(store);
+ assert.deepEqual(Object.fromEntries(known),{'REQ-A':'collected','REQ-B':'unknown','REQ-C':'generated'});
+ const queue=[{id:'REQ-A'},{id:'REQ-B'},{id:'REQ-C'},{id:'REQ-X'}];
+ assert.deepEqual(toolStateBlockers(queue,known),['REQ-B','REQ-C','REQ-X'],'unknown, uncollected and foreign items block');
+ assert.deepEqual(toolStateBlockers(queue,known,['REQ-B','REQ-C','REQ-X']),['REQ-C','REQ-X'],
+  'release covers only sent-and-never-collected items; a generated result must be collected first');
+ assert.deepEqual(toolStateBlockers([{id:'REQ-A'}],known),[]);
+});

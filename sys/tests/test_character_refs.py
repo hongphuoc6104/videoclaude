@@ -191,6 +191,22 @@ class SessionCheckTests(unittest.TestCase):
                 b2_bridge.ensure_connected()
         self.assertIs(ctx.exception.generation_submitted, False)
 
+    def test_one_failed_request_does_not_discard_the_others(self):
+        out = Path(tempfile.mkdtemp())
+        good = out / 'b.png'; good.write_bytes(b'image')
+        reply = {'items': [None, {'request_id': 'b', 'path': str(good), 'media_id': 'm'}],
+                 'failures': [{'index': 0, 'request_id': 'a', 'reason': 'FLOW_ITEM_UNKNOWN_RECONCILE_NO_RESUBMIT: x'}]}
+        with patch('b2_bridge.require_queue_acceptance'), patch('b2_bridge.ensure_connected'), \
+             patch('b2_bridge.send_raw_command', return_value=reply):
+            items = b2_bridge.generate_b2_batch([{'testCase': 'a'}, {'testCase': 'b'}])
+            self.assertEqual(items[0], {'failed': 'FLOW_ITEM_UNKNOWN_RECONCILE_NO_RESUBMIT: x', 'request_id': 'a'})
+            self.assertEqual(items[1]['media_id'], 'm')
+            with self.assertRaisesRegex(Blocked, 'FLOW_ITEM_UNKNOWN') as ctx:
+                with patch('b2_bridge.queue_spec', return_value={'testCase': 'a'}), \
+                     patch('b2_bridge.send_raw_command', return_value={'items': [None], 'failures': reply['failures'][:1]}):
+                    b2_bridge.generate_b2_image('p', no_character=True, out_dir=out, test_case='a')
+            self.assertIsNot(getattr(ctx.exception, 'generation_submitted', True), False, 'sent, so unknown')
+
     def test_a_timeout_during_a_queue_command_stays_unknown(self):
         with patch('b2_bridge.require_queue_acceptance'), patch('b2_bridge.ensure_connected'), \
              patch('b2_bridge.send_raw_command', side_effect=Blocked('timed out after 240s: tool-snapshot:queue')):

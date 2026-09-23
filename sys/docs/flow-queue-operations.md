@@ -67,3 +67,13 @@ Theo yêu cầu trực tiếp của người dùng, `flow_require_ui_evidence=fa
 Nhật ký submitting vẫn được ghi trước Start Queue. Lỗi có nhật ký chứng minh chưa bắt đầu gửi được trả về `generationSubmitted=false` và batch ghi `not_submitted`, không tạo M2_AMBIGUOUS. Sau khi bắt đầu gửi, timeout vẫn cần đối chiếu. Hàng đợi UI còn mục chưa gửi phải được kiểm tra trước khi tiếp tục; không tự xóa hoặc gửi trùng.
 
 Không sửa khóa ambiguous của lần chạy cũ bằng suy đoán: phải kiểm tra journal xác nhận chưa Start Queue. Thay đổi này áp dụng cho lần chạy mới, không tự sửa lịch sử.
+
+## Bộ nhớ của tool và giải phóng ảnh kẹt
+
+Tool lưu base64 của mọi kết quả trong `localStorage` khóa `VP_LAB_STATE_V2` (Chrome giới hạn khoảng 5 MB mỗi origin). Đo thật ngày 23/09/2026: sau 22 ảnh trạng thái dài 5.166.163 ký tự; ảnh kế tiếp được tạo nhưng tool không lưu được ("Persistence failure after result") và tự khóa. Mỗi phiên tool vì thế chỉ chứa khoảng 25 ảnh nếu không dọn.
+
+- Trước mỗi lượt hàng đợi, nếu trạng thái dài hơn 2.500.000 ký tự, queue-runner sao lưu toàn bộ trạng thái vào `results/controller/tool-state/<thời điểm>.json`, xóa khóa và tải lại tab. Chỉ làm khi mọi mục trong tool đã `collected` trong nhật ký AttemptStore; còn mục nào khác thì dừng với `TOOL_STATE_HAS_UNSAVED_ITEMS`.
+- Mỗi yêu cầu trong một lượt được xử lý riêng: ảnh xong được lấy về ngay; mục tool báo UNKNOWN/FAILED hoặc quá 180 giây được trả về là lỗi riêng (pipeline ghi ambiguous), các ảnh khác vẫn được lưu.
+- Ảnh đã gửi nhưng không bao giờ lấy được (nhật ký `submitting`/`unknown`) chỉ được bỏ khỏi tool bằng quyết định của người vận hành: ghi file `{"queueIds":["REQ-…"],"reason":"…"}` rồi chạy `node experiments/b2_illustrator/session.mjs tool-snapshot:queue-release:<file>`. Lệnh sao lưu trạng thái, từ chối nếu mục đó đã có kết quả chưa lấy hoặc có mục lạ, rồi tải lại tool sạch. Nhật ký pipeline của yêu cầu đó vẫn giữ nguyên (ambiguous).
+- `node experiments/b2_illustrator/session.mjs tool-snapshot:queue-state` chỉ đọc: trạng thái từng mục và dung lượng đã dùng.
+- queue-runner được cache trong phiên: sau khi sửa file này phải mở phiên mới.

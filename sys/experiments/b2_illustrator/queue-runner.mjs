@@ -51,14 +51,16 @@ export async function runQueue(specs,bound) {
 async function executeQueue(specs,bound) {
  const requests=prepareRequests(specs),store=new AttemptStore(path.join(safeResults(),'production-attempts'));
  const attempts=requests.map(r=>store.prepare(r.identity));
- // Reuse fully downloaded results without interacting with Flow.
- if(attempts.every(a=>a.state==='collected'&&fs.existsSync(a.events.at(-1).collection.path)))return {items:attempts.map(a=>a.events.at(-1).collection)};
- if(attempts.every(a=>['generated','collected'].includes(a.state)))return collectResults(store,attempts,requests);
+ // A group already sent is never sent again: return what the journal holds, per request.
+ if(attempts.every(a=>a.state!=='prepared'))return collectResults(store,attempts,requests);
  if(attempts.some(a=>a.state!=='prepared'))throw Error('FLOW_RECONCILIATION_REQUIRED: existing attempt; no resubmission');
  const page=bound.page;
  if(!page.url().startsWith(toolUrl))throw Error('WRONG_TOOL_URL');
- const frame=await findToolFrame(page);
+ let frame=await findToolFrame(page);
  const state=()=>frame.evaluate(()=>JSON.parse(localStorage.getItem('VP_LAB_STATE_V2')||'{}'));
+ // The tool keeps every result's base64 in localStorage (about 5 MB per origin); once full, a result is
+ // generated but cannot be saved. Start from an empty tool state once everything in it is on disk.
+ if(await frame.evaluate(()=>(localStorage.getItem('VP_LAB_STATE_V2')||'').length)>COMPACT_AT_CHARS)frame=await resetToolState(page,store);
  const initial=await state();
  if(initial.status==='UNKNOWN'||initial.queue?.some(i=>!['COMPLETED','ACCEPTED'].includes(i.status)))throw Error('UNRESOLVED_FLOW_QUEUE');
  const ids=[];
@@ -95,29 +97,73 @@ async function executeQueue(specs,bound) {
  // Mark the entire group before Start. A crash anywhere makes retry conservative.
  for(let i=0;i<attempts.length;i++)store.beginSubmission(attempts[i],{queueId:ids[i],screenshot:shot});
  await frame.getByRole('button',{name:'Start Queue',exact:true}).click();
- const started=Date.now(),captured=new Set();
+ // Each request resolves on its own: one stuck or failed item never holds back the finished ones.
+ const started=Date.now(),captured=new Set(),failed=new Map();
  while(Date.now()-started<180000) {
   const current=await state();
   for(let i=0;i<ids.length;i++) {
+   if(captured.has(i)||failed.has(i))continue;
    const item=current.queue?.find(x=>x.id===ids[i]);
-   if(!item)throw Error('QUEUE_DISAPPEARED_RECONCILE_NO_RESUBMIT');
-   if(item.mediaId&&item.result?.base64&&!captured.has(i)) {
+   if(!item)failed.set(i,'QUEUE_DISAPPEARED_RECONCILE_NO_RESUBMIT');
+   else if(item.mediaId&&item.result?.base64) {
     store.recordGenerated(attempts[i],{mediaId:item.mediaId,result:item.result,queueId:item.id,timestamps:item.timestamps});captured.add(i);
-   }
+   } else if(['UNKNOWN','FAILED'].includes(item.status))failed.set(i,`FLOW_ITEM_${item.status}_RECONCILE_NO_RESUBMIT: ${item.error||'no result'}`);
   }
-  if(captured.size===ids.length)break;
-  if(current.status==='UNKNOWN'||current.queue.some(i=>ids.includes(i.id)&&['UNKNOWN','FAILED'].includes(i.status)))throw Error('FLOW_RECONCILIATION_REQUIRED');
+  if(captured.size+failed.size===ids.length)break;
   await new Promise(resolve=>setTimeout(resolve,500));
  }
- if(captured.size!==ids.length)throw Error('FLOW_TIMEOUT_RECONCILE_NO_RESUBMIT');
- const afterShot=null;
- return collectResults(store,attempts,requests,afterShot,started);
+ for(let i=0;i<ids.length;i++)if(!captured.has(i)&&!failed.has(i))failed.set(i,'FLOW_TIMEOUT_RECONCILE_NO_RESUBMIT');
+ return collectResults(store,attempts,requests,null,started,failed);
 }
-function collectResults(store,attempts,requests,afterShot=null,started=null) {
- const items=[];
+
+export const COMPACT_AT_CHARS=2500000;
+const TOOL_STATE_KEY='VP_LAB_STATE_V2';
+
+/** Last known state of every journaled request, by the tool's queue id. */
+export function journalByQueueId(directory) {
+ const map=new Map();
+ for(const name of fs.existsSync(directory)?fs.readdirSync(directory).filter(x=>x.endsWith('.ndjson')):[]) {
+  const events=fs.readFileSync(path.join(directory,name),'utf8').split('\n').filter(Boolean).map(line=>JSON.parse(line));
+  const queueId=events.find(e=>e.event==='submitting')?.queueId;
+  if(queueId)map.set(queueId,events.filter(e=>e.state).at(-1)?.state);
+ }
+ return map;
+}
+
+/** Items the tool state may drop: saved to disk by us, or explicitly released (sent, never collected). */
+export function toolStateBlockers(queue,journal,release=[]) {
+ return (queue||[]).filter(item=>{
+  const known=journal.get(item.id);
+  if(['collected','accepted'].includes(known))return false;
+  return !(release.includes(item.id)&&['submitting','unknown'].includes(known));
+ }).map(item=>item.id);
+}
+
+/** Back up the whole tool state, drop it and reload the tool. Refuses while any item is not safely on disk. */
+export async function resetToolState(page,store,{release=[],reason='localStorage near its limit'}={}) {
+ let frame=await findToolFrame(page);
+ const raw=await frame.evaluate(key=>localStorage.getItem(key)||'{}',TOOL_STATE_KEY);
+ const blockers=toolStateBlockers(JSON.parse(raw).queue,journalByQueueId(store.directory),release);
+ if(blockers.length)throw Error('TOOL_STATE_HAS_UNSAVED_ITEMS: '+blockers.join(','));
+ const folder=path.join(safeResults(),'tool-state');fs.mkdirSync(folder,{recursive:true});
+ fs.writeFileSync(path.join(folder,`${Date.now()}.json`),JSON.stringify({at:new Date().toISOString(),reason,release,state:raw}),{flag:'wx'});
+ await frame.evaluate(key=>localStorage.removeItem(key),TOOL_STATE_KEY);
+ await page.reload({waitUntil:'domcontentloaded'});
+ frame=await findToolFrame(page);
+ await frame.getByRole('button',{name:'Initialize Generation',exact:true}).waitFor({timeout:30000});
+ const after=JSON.parse(await frame.evaluate(key=>localStorage.getItem(key)||'{}',TOOL_STATE_KEY));
+ if(after.status==='UNKNOWN'||(after.queue||[]).length)throw Error('TOOL_STATE_RESET_FAILED');
+ return frame;
+}
+function collectResults(store,attempts,requests,afterShot=null,started=null,failed=new Map()) {
+ const items=[],failures=[];
  for(let i=0;i<attempts.length;i++) {
   const a=store.read(attempts[i]);
   if(a.state==='collected'&&fs.existsSync(a.events.at(-1).collection.path)){items.push(a.events.at(-1).collection);continue;}
+  if(!['generated','collected'].includes(a.state)) {
+   items.push(null);failures.push({index:i,request_id:requests[i].spec.testCase,reason:failed.get(i)||`FLOW_RECONCILIATION_REQUIRED: attempt ${a.state}`});
+   continue;
+  }
   const event=a.events.find(e=>e.event==='generated'),r=event.result;
   const submission=a.events.find(e=>e.event==='submitting');
   const shot=submission.screenshot;
@@ -129,5 +175,5 @@ function collectResults(store,attempts,requests,afterShot=null,started=null) {
   const result={path:file,forge_id:a.mediaId,media_id:a.mediaId,before_submit:shot,screenshot:afterShot||shot,technical_validation:validation,latency:started?(Date.now()-started)/1000:null,request_id:requests[i].spec.testCase};
   store.recordCollected(a,result);items.push(result);
  }
- return {items};
+ return failures.length?{items,failures}:{items};
 }

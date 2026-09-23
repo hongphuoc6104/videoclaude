@@ -164,7 +164,10 @@ def generate_b2_image(
     spec_file = target_dir / f".spec-{test_case}-{int(time.time() * 1000)}.json"
     spec_file.write_text(json.dumps(spec, indent=2), encoding="utf-8")
 
-    return generate_b2_batch([spec], timeout=timeout)[0]
+    item = generate_b2_batch([spec], timeout=timeout)[0]
+    if item.get("failed"):
+        raise Blocked(item["failed"])  # sent to Flow, so the caller keeps it unknown
+    return item
 
 
 def generate_b2_batch(specs: list[dict], timeout: float = 240.0) -> list[dict]:
@@ -186,11 +189,19 @@ def generate_b2_batch(specs: list[dict], timeout: float = 240.0) -> list[dict]:
     items = result.get("items", [])
     if len(items) != len(specs):
         raise Blocked("B-2 incomplete batch; reconcile before retry")
-    for spec, item in zip(specs, items):
+    # One entry per spec, in order. A request Flow did not return is {"failed": reason}; the others stand.
+    reasons = {x["index"]: x["reason"] for x in result.get("failures", [])}
+    out = []
+    for i, (spec, item) in enumerate(zip(specs, items)):
+        if item is None:
+            out.append({"failed": reasons.get(i, "B-2 request unresolved; reconcile before retry"),
+                        "request_id": spec["testCase"]})
+            continue
         if item.get("request_id") != spec["testCase"] or not Path(item["path"]).is_file():
             raise Blocked("B-2 result mapping failed")
         item["sha256"] = digest(Path(item["path"]))
-    return items
+        out.append(item)
+    return out
 
 
 def require_queue_acceptance():

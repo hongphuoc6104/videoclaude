@@ -11,6 +11,32 @@ const canonicalMascotPath = path.resolve(here, '../../assets/characters/channel-
 const canonicalMascotMediaId = 'de94a39b-155f-4afe-acbb-d9d4b59ad532';
 
 export async function runOperation(command, bound) {
+  if(command === 'tool-snapshot:queue-state') {
+    // Read-only: queue item states and how much of the tool's localStorage the saved state uses. Clicks nothing.
+    const page=bound?.page;
+    if(!page || page.isClosed() || !page.url().startsWith(toolUrl)) throw Error('BOUND_TAB_UNAVAILABLE');
+    const frame=await findToolFrame(page);
+    const state=await frame.evaluate(()=>{
+      const raw=localStorage.getItem('VP_LAB_STATE_V2')||'{}', s=JSON.parse(raw);
+      let total=0;for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);total+=k.length+(localStorage.getItem(k)||'').length;}
+      return {status:s.status,stateChars:raw.length,localStorageChars:total,keys:Object.keys(s),
+        items:(s.queue||[]).map(i=>({id:i.id,status:i.status,mediaId:i.mediaId||null,error:i.error||i.errorMessage||null,
+          resultChars:(i.result?.base64||'').length,topic:(i.config?.topic||'').slice(-60)}))};
+    });
+    return {...state,generationSubmitted:false};
+  }
+  if(command.startsWith('tool-snapshot:queue-release:')) {
+    // Operator decision in a file: {"queueIds":[...],"reason":"..."}. Only items our journal shows as sent and never
+    // collected may be released; everything else in the tool state must already be on disk. Backs up, then resets.
+    const page=bound?.page;
+    if(!page || page.isClosed() || !page.url().startsWith(toolUrl)) throw Error('BOUND_TAB_UNAVAILABLE');
+    const order=JSON.parse(fs.readFileSync(command.slice('tool-snapshot:queue-release:'.length),'utf8'));
+    if(!Array.isArray(order.queueIds)||!order.queueIds.length||!String(order.reason||'').trim())throw Error('RELEASE_NEEDS_QUEUE_IDS_AND_REASON');
+    const {resetToolState}=await import('./queue-runner.mjs?revision='+Date.now());
+    const {AttemptStore}=await import('./attempt-store.mjs');
+    await resetToolState(page,new AttemptStore(path.join(safeResults(),'production-attempts')),{release:order.queueIds,reason:order.reason});
+    return {status:'released',queueIds:order.queueIds,generationSubmitted:false};
+  }
   if(command==='tool-snapshot:share-copy') {
     await bound.page.getByRole('button',{name:'Copy link',exact:true}).click();
     const link=await Promise.race([bound.page.evaluate(()=>navigator.clipboard.readText()),new Promise((_,reject)=>setTimeout(()=>reject(Error('CLIPBOARD_PERMISSION_PENDING')),3000))]);

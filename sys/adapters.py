@@ -200,6 +200,10 @@ def gflow(p,*args,timeout=960):
    try:
     results = b2_bridge.generate_b2_batch(specs, timeout=timeout)
     for job, result, entry in zip(group, results, entries):
+     if result.get('failed'):
+      entry.update(status='failed', error=result['failed'])  # sent: stays unknown until reconciled
+      write(state_file, {'jobs':run_jobs})
+      continue
      src = Path(result['path'])
      dst = batch_out / (job['id'] + src.suffix)
      shutil.copy(src, dst)
