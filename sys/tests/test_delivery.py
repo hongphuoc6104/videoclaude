@@ -19,6 +19,12 @@ class DirectionTests(unittest.TestCase):
   self.assertEqual(split_dialogue(['Ông lão ngồi bật dậy: “Ai đó?”','Tôi hé tia sáng… Nó đang mở.']),
                    ['Ông lão ngồi bật dậy:','“Ai đó?”','Tôi hé tia sáng…','Nó đang mở.'])
 
+ def test_one_word_knocks_stay_with_the_surrounding_sentence(self):
+  self.assertEqual(split_dialogue(['Ba tiếng gõ bật ra từ phía sau mặt kính: “Cốc… cốc… cốc.”']),
+                   ['Ba tiếng gõ bật ra từ phía sau mặt kính: “Cốc… cốc… cốc.”'])
+  self.assertEqual(split_dialogue(['Hai giây im bặt.','An nín thở.','“Cốc.”','Tiếng thứ tư bật lên.']),
+                   ['Hai giây im bặt.','An nín thở. “Cốc.”','Tiếng thứ tư bật lên.'])
+
  def test_multi_sentence_quote_stays_dialogue_until_it_closes(self):
   self.assertEqual(dialogue_flags(['Tôi gào lên:','“Đừng cười nữa!','Tôi nhận tội rồi!”','Vị khách lùi lại.']),
                    [False,True,True,False])

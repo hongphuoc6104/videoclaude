@@ -28,7 +28,19 @@ def split_dialogue(texts):
             out.append(rest[:i].rstrip())
             rest = rest[i:]
         out.append(rest)
-    return [x for x in out if x.strip()]
+    parts = [x for x in out if x.strip()]
+    # One-word sound cues such as “Cốc… cốc… cốc.” can fail Gwen's duration
+    # check when each beat is synthesized alone. Keep the exact words and
+    # punctuation, but let the voice read them with an adjacent sentence.
+    joined = []
+    for i, part in enumerate(parts):
+        if len(re.findall(r'\w+', part)) == 1 and joined:
+            joined[-1] += ' ' + part
+        elif len(re.findall(r'\w+', part)) == 1 and i + 1 < len(parts):
+            parts[i + 1] = part + ' ' + parts[i + 1]
+        else:
+            joined.append(part)
+    return joined
 
 
 def dialogue_flags(texts):
