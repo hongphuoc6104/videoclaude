@@ -639,6 +639,9 @@ def _verify_tool_trace(raw, required, brain_root=None):
             elif suffix == '.wav':
                 if not any(value.startswith('audio/') for value in mime):
                     continue
+            elif suffix == '.mp4':
+                if not any(value.startswith('video/') for value in mime):
+                    continue
             else:
                 content = str(reply.get('content', ''))
                 total_lines = re.search(r'Total Lines:\s*(\d+)', content)
@@ -792,6 +795,9 @@ def review_media_batches(p, job, paths, snapshot):
 def review(p, job, stage, paths, snapshot):
     if stage == 'media':
         return review_media_batches(p, job, paths, snapshot)
+    if stage == 'video':
+        from scripts.video_review import review_video_batches
+        return review_video_batches(p, job, paths, snapshot)
     from scripts.agy_pipeline import invoke
     files = {str(p.path(job, path)): digest(p.path(job, path)) for path in paths}
     identity = hashobj({'stage': stage, 'files': files, 'snapshot': snapshot})
