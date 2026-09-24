@@ -17,6 +17,7 @@ from PIL import Image
 from pilot import ROOT, Blocked, Pilot, digest, hashobj, read, write
 import adapters
 import media_import
+import machine_review
 import workflow
 
 
@@ -124,6 +125,27 @@ class MediaImportTests(unittest.TestCase):
                       workflow.current(self.p, 'target', 'media')['assets'])
         self.p.validate('target', 'audio')
         self.p.validate('target', 'images')
+
+    def test_imported_media_passes_real_deterministic_review_plan(self):
+        """Cross the real importer/reviewer boundary without calling AGY."""
+        self.new_job('target')
+        media_import.import_media(self.p, 'target', 'source')
+        manifest = workflow.current(self.p, 'target', 'media')
+        self.assertIsNotNone(manifest)
+        plan, _content, _audio, _images, tracks, verified = machine_review._media_plan(
+            self.p, 'target', manifest['assets'], manifest['snapshot'])
+        self.assertEqual(len(plan['files']), len(manifest['assets']))
+        self.assertEqual(len(plan['batches']), 1 + (len(self.p.payload('target', 'content')['scenes']) + 1) // 2)
+        self.assertEqual(len(tracks), 1)
+        receipt = self.p.payload('target', 'images')['import_receipt']
+        self.assertIn(str(self.p.path('target', receipt)), verified['deterministically_verified_files'])
+        self.assertTrue(verified['import_provenance_files'])
+        reference = next(ref for item in self.p.payload('target', 'images')['items']
+                         for ref in item['references'])
+        journal = read(self.p.path('target', reference['registration_journal']))
+        self.assertNotEqual(journal['path'], reference['registration_image'])
+        self.assertIn(str(self.p.path('target', reference['registration_image'])), plan['files'])
+        self.assertFalse(self.p.path('target', manifest['decision']).exists())
 
     def test_public_cli_import_audio_only(self):
         self.new_job('target')
