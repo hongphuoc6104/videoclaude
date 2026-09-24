@@ -148,7 +148,7 @@ export function referencesFor(policy,profile,request,owners=new Map(),verified=n
   if(!ref){out[role]=null;continue;}
   const owner=owners.get(ref.mediaId)||policy.home;
   if(owner===profile)out[role]=ref;
-  else if(map[ref.mediaId])out[role]={...ref,mediaId:map[ref.mediaId],sourceMediaId:ref.mediaId};
+  else if(role==='character'&&map[ref.mediaId])out[role]={...ref,mediaId:map[ref.mediaId],sourceMediaId:ref.mediaId};
   else if(verified.has(verifiedReferenceKey(profile,ref)))
    out[role]={...ref,mediaId:verified.get(verifiedReferenceKey(profile,ref)),sourceMediaId:ref.mediaId};
   else return {ok:false,reason:`REFERENCE_MEDIA_NOT_ON_PROFILE: ${role} ${ref.mediaId} belongs to ${owner}; map it in profiles["${profile}"].media_ids or declare reference_media "shared"`};

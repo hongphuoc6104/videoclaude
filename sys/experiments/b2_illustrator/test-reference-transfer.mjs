@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {ReferenceTransferStore,ensureReferenceTransfer} from './reference-transfer.mjs';
-import {projectUrlFromTool,explicitMediaIds} from './flow-reference-upload.mjs';
+import {projectUrlFromTool,explicitMediaIds,requestContainsSource} from './flow-reference-upload.mjs';
 
 const root=fs.mkdtempSync(path.join(os.tmpdir(),'vp-ref-transfer-'));
 test.after(()=>fs.rmSync(root,{recursive:true,force:true}));
@@ -24,8 +24,18 @@ function proof(folder,id=TARGET) {
  const screenshot=path.join(folder,crypto.randomUUID()+'.png');fs.writeFileSync(screenshot,'TEST ONLY observed upload tile');
  return {targetMediaId:id,evidence:{profile:identity.profile,sourceMediaId:identity.sourceMediaId,sourceSha256,
   networkMediaId:id,tileMediaId:id,screenshot,
+  uploadRequestSha256:sourceSha256,networkBodySha256:sourceSha256,tileBytesSha256:sourceSha256,
+  uploadPayloadContainsSource:true,
   screenshotSha256:crypto.createHash('sha256').update(fs.readFileSync(screenshot)).digest('hex')}};
 }
+
+test('identity property order cannot create a second upload journal',()=>{
+ const store=new ReferenceTransferStore(path.join(root,'canonical-key'));
+ const reordered=Object.fromEntries(Object.entries(identity).reverse());
+ assert.equal(store.file(identity),store.file(reordered));
+ store.prepare(identity);
+ assert.equal(store.read(reordered).state,'prepared');
+});
 
 test('upload evidence maps only the exact source bytes and target profile, then reuses the journal',async()=>{
  const store=new ReferenceTransferStore(path.join(root,'success')),folder=path.join(root,'success-proof');
@@ -75,4 +85,14 @@ test('only explicit media IDs count; a project UUID or generic id cannot be gues
  assert.throws(()=>projectUrlFromTool('https://example.com/project/a/tool/b'),/TOOL_URL_UNSUPPORTED/);
  assert.deepEqual([...explicitMediaIds({projectId:SOURCE,id:SOURCE,asset:{mediaId:TARGET}})],[TARGET]);
  assert.deepEqual([...explicitMediaIds({id:SOURCE,projectId:TARGET})],[]);
+});
+
+test('unrelated JSON response request cannot attest an uploaded image',()=>{
+ const raw={postDataBuffer:()=>Buffer.from('unrelated request')};
+ const binary={postDataBuffer:()=>Buffer.concat([Buffer.from('multipart-header'),bytes,Buffer.from('multipart-tail')])};
+ const encoded={postDataBuffer:()=>Buffer.from(JSON.stringify({image:bytes.toString('base64')}))};
+ assert.equal(requestContainsSource(raw,bytes),false);
+ assert.equal(requestContainsSource(binary,bytes),true);
+ assert.equal(requestContainsSource(encoded,bytes),true);
+ assert.equal(requestContainsSource({postDataBuffer:()=>null},bytes),false);
 });

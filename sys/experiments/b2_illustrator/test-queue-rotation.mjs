@@ -223,6 +223,8 @@ function verifiedUpload(tab,target=TARGET_BASE) {
   const screenshot=path.join(evidenceDir,crypto.randomUUID()+'.png');fs.writeFileSync(screenshot,'TEST ONLY visible uploaded tile');
   return {targetMediaId:target,evidence:{profile:identity.profile,sourceMediaId:identity.sourceMediaId,sourceSha256:identity.sourceSha256,
    networkMediaId:target,tileMediaId:target,screenshot,
+   uploadRequestSha256:identity.sourceSha256,networkBodySha256:identity.sourceSha256,
+   tileBytesSha256:identity.sourceSha256,uploadPayloadContainsSource:true,
    screenshotSha256:crypto.createHash('sha256').update(fs.readFileSync(screenshot)).digest('hex')}};
  };
 }
@@ -238,13 +240,13 @@ test('foreign base is registered before the quota resend, with verified ID and d
   'Profile 102':new FakeTab('Profile 102')};
  verifiedUpload(tabs['Profile 102']);
  const profiles={'Profile 10':{tool_url:tabs['Profile 10'].toolUrl},
-  'Profile 102':{tool_url:tabs['Profile 102'].toolUrl,reference_media:'own',media_ids:{}}};
+  'Profile 102':{tool_url:tabs['Profile 102'].toolUrl,reference_media:'own',media_ids:{[SOURCE_BASE]:'33333333-3333-4333-8333-333333333333'}}};
  const w=world('transfer-base',{tabs,profiles});
  seedCollectedBase(w);
  const request=specs(w.dir,['dependent'],{baseRefPath:png,baseMediaId:SOURCE_BASE});
  const result=await executeQueue(request,w.bound,w.deps);
  assert.equal(result.failures,undefined);
- assert.equal(tabs['Profile 102'].uploads.length,1);
+ assert.equal(tabs['Profile 102'].uploads.length,1,'a stale static base map cannot skip verified upload');
  assert.deepEqual(tabs['Profile 102'].started,['dependent']);
  assert.equal(tabs['Profile 102'].items[0].baseImageMediaId,TARGET_BASE);
  assert.equal(result.items[0].profile,'Profile 102');

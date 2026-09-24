@@ -10,17 +10,23 @@ import crypto from 'node:crypto';
 
 const sha256=value=>crypto.createHash('sha256').update(value).digest('hex');
 const mediaId=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const identityKey=identity=>JSON.stringify(Object.fromEntries(Object.entries(identity).sort(([a],[b])=>a.localeCompare(b))));
+function syncDirectory(directory) {
+ const fd=fs.openSync(directory,'r');
+ try {fs.fsyncSync(fd);} finally {fs.closeSync(fd);}
+}
 
 function atomicWrite(file,value) {
  const temp=`${file}.${process.pid}.${crypto.randomUUID()}.tmp`;
  const fd=fs.openSync(temp,'wx',0o600);
  try {fs.writeFileSync(fd,JSON.stringify(value,null,2)+'\n');fs.fsyncSync(fd);} finally {fs.closeSync(fd);}
- try {fs.renameSync(temp,file);} finally {if(fs.existsSync(temp))fs.unlinkSync(temp);}
+ try {fs.renameSync(temp,file);syncDirectory(path.dirname(file));}
+ finally {if(fs.existsSync(temp))fs.unlinkSync(temp);}
 }
 
 export class ReferenceTransferStore {
  constructor(directory){this.directory=directory;}
- key(identity){return sha256(JSON.stringify(identity));}
+ key(identity){return sha256(identityKey(identity));}
  file(identity){return path.join(this.directory,this.key(identity)+'.json');}
  withLock(identity,fn) {
   const lock=this.file(identity)+'.lock';let fd;
@@ -39,12 +45,13 @@ export class ReferenceTransferStore {
   try {
    const fd=fs.openSync(file,'wx',0o600);
    try {fs.writeFileSync(fd,JSON.stringify(initial,null,2)+'\n');fs.fsyncSync(fd);} finally {fs.closeSync(fd);}
+   syncDirectory(this.directory);
   } catch(error) {if(error.code!=='EEXIST')throw error;}
   return this.read(identity);
  }
  read(identity) {
   const record=JSON.parse(fs.readFileSync(this.file(identity),'utf8'));
-  if(record.schema!=='vp-reference-transfer-1'||JSON.stringify(record.identity)!==JSON.stringify(identity))
+  if(record.schema!=='vp-reference-transfer-1'||identityKey(record.identity)!==identityKey(identity))
    throw Error('REFERENCE_TRANSFER_JOURNAL_MISMATCH');
   if(!['prepared','uploading','registered'].includes(record.state))throw Error('REFERENCE_TRANSFER_JOURNAL_INVALID');
   return record;
@@ -65,6 +72,10 @@ export class ReferenceTransferStore {
    if(!mediaId.test(id||'')||evidence?.networkMediaId!==id||evidence?.tileMediaId!==id
      ||evidence?.profile!==identity.profile||evidence?.sourceMediaId!==identity.sourceMediaId
      ||evidence?.sourceSha256!==identity.sourceSha256
+     ||!/^([a-f0-9]{64})$/i.test(evidence?.uploadRequestSha256||'')
+     ||!/^([a-f0-9]{64})$/i.test(evidence?.networkBodySha256||'')
+     ||!/^([a-f0-9]{64})$/i.test(evidence?.tileBytesSha256||'')
+     ||evidence?.uploadPayloadContainsSource!==true
      ||!evidence?.screenshot||!evidence?.screenshotSha256
      ||!fs.existsSync(evidence.screenshot)||sha256(fs.readFileSync(evidence.screenshot))!==evidence.screenshotSha256)
     throw Error('REFERENCE_TRANSFER_EVIDENCE_INCOMPLETE');
@@ -81,7 +92,11 @@ export class ReferenceTransferStore {
   if(!mediaId.test(record.targetMediaId||'')||evidence?.networkMediaId!==record.targetMediaId
     ||evidence?.tileMediaId!==record.targetMediaId||evidence?.profile!==identity.profile
     ||evidence?.sourceMediaId!==identity.sourceMediaId
-    ||evidence?.sourceSha256!==identity.sourceSha256||!evidence?.screenshot
+    ||evidence?.sourceSha256!==identity.sourceSha256
+    ||!/^([a-f0-9]{64})$/i.test(evidence?.uploadRequestSha256||'')
+    ||!/^([a-f0-9]{64})$/i.test(evidence?.networkBodySha256||'')
+    ||!/^([a-f0-9]{64})$/i.test(evidence?.tileBytesSha256||'')
+    ||evidence?.uploadPayloadContainsSource!==true||!evidence?.screenshot
     ||!fs.existsSync(evidence.screenshot)||sha256(fs.readFileSync(evidence.screenshot))!==evidence.screenshotSha256)
    throw Error('REFERENCE_TRANSFER_SAVED_EVIDENCE_CHANGED');
   return record.targetMediaId;

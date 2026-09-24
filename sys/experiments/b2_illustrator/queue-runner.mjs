@@ -308,11 +308,14 @@ export async function executeQueue(specs,bound,deps={}) {
   for(const i of pending)for(const role of ['character','base']) {
    const ref=requests[i][role];if(!ref)continue;
    const owner=owners.get(ref.mediaId)||policy.home;
-   if(owner===profile||settings.media_ids?.[ref.mediaId])continue;
+   if(owner===profile)continue;
    // A regular media upload has not been proven equivalent to registering a
    // Flow Character. Existing character mappings remain usable; unknown ones
    // stop rather than silently treating an uploaded image as a character.
-   if(role==='character') {transferFailure=`REFERENCE_CHARACTER_REGISTRATION_UNVERIFIED: ${ref.mediaId}`;break;}
+   if(role==='character') {
+    if(settings.media_ids?.[ref.mediaId])continue;
+    transferFailure=`REFERENCE_CHARACTER_REGISTRATION_UNVERIFIED: ${ref.mediaId}`;break;
+   }
    // A generated base must be tied to the exact collected bytes and submitting
    // profile. Never call a foreign base "home-owned" merely because its media ID
    // was absent from the journal.
@@ -321,9 +324,12 @@ export async function executeQueue(specs,bound,deps={}) {
     if(!source||source.profile!==owner||source.sha256!==ref.sha256) {
      transferFailure=`REFERENCE_BASE_PROVENANCE_UNVERIFIED: ${ref.mediaId}`;break;
     }
+    // A static media_ids mapping is not evidence that this generated base's
+    // exact bytes reached the destination account. Only the upload journal is.
+    const key=verifiedReferenceKey(profile,ref);
+    if(!verifiedRefs.has(key))needed.set(key,{ref,owner});
+    continue;
    }
-   const key=verifiedReferenceKey(profile,ref);
-   if(!verifiedRefs.has(key))needed.set(key,{ref,owner});
   }
   if(transferFailure){stop(transferFailure);break;}
   for(const [key,{ref,owner}] of needed) {
