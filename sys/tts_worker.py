@@ -3,7 +3,7 @@
 Two engines, picked by config tts_engine: 'gwen' (Gwen-TTS clone of a voice
 folder under assets/voices/, run from .venv-gwen) or 'vieneu' (VieNeu v3 Turbo
 presets, run from .venv-tts / .venv-tts-gpu)."""
-import hashlib,json,re,sys
+import hashlib,json,os,re,sys,tempfile
 from pathlib import Path
 import numpy as np,soundfile as sf
 
@@ -295,7 +295,13 @@ def run(source,out):
    for (text,retake,spd),w in zip(chunk,wavs):
     k=speed if spd is None else spd
     if isinstance(w,np.ndarray) and abs(k-1.0)>=0.01:w=change_tempo(w,st['sr'],k)
-    st['tts'].save(w,str(cached(text,retake,spd)))
+    target=cached(text,retake,spd)
+    fd,temp_name=tempfile.mkstemp(prefix='.tts-',suffix='.wav',dir=raw)
+    os.close(fd);temp=Path(temp_name)
+    try:
+     st['tts'].save(w,str(temp))
+     os.replace(temp,target)
+    finally:temp.unlink(missing_ok=True)
 
  def synth(text,retake=0,spd=None):
   """Synthesize once, cached by content hash so a crashed/rerun revision
