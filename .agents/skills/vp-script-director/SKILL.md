@@ -1,6 +1,6 @@
 ---
 name: vp-script-director
-description: Critique a complete Vietnamese horror narration draft against six story criteria before content submission; use for horror_story briefs with script_director enabled.
+description: Check the opening chunk and critique a complete Vietnamese horror narration draft before content submission; use for horror_story briefs with script_director enabled.
 ---
 
 # Horror script director
@@ -12,6 +12,12 @@ The writer owns the draft. Score the entire spoken Vietnamese story after struct
 Với brief `horror_story` có bật `script_director`, `scripts/long_script.py` kiểm tra dàn ý đầy đủ **trước khi viết bất kỳ cặp cảnh nào**. Đây là một bước nội bộ, không thêm cổng duyệt công khai. Bộ phê bình đọc tất cả `purpose`, các điểm bắt buộc trong brief và văn phong truyện; chấm năm điều: câu móc không tiết lộ cú lật, khoảng nhẹ nhõm giả thực sự ở giữa truyện, trình tự cú lật và chi tiết gieo–trả theo hạt giống, nhân quả/ngôi kể/khẳng định có cơ sở, lời khép của người dẫn không rủ người xem thử làm theo.
 
 Mỗi điều cần mã cảnh và câu trích **nguyên văn từ `purpose`**. Mã Python kiểm tra câu trích thuộc đúng cảnh, tính kết quả từ từng mục thay vì tin cờ `pass` của bộ phê bình. Mục chưa đạt phải có yêu cầu sửa cụ thể cho cảnh liên quan. Người viết được lập lại **toàn bộ dàn ý tối đa hai lần**, giữ số cảnh, mã ý bắt buộc và danh sách nhân vật nhất quán. Mỗi dàn ý và nhận xét được lưu trong `agent-attempts/<attempt>/outline-*-round-*.json`. Hết lượt vẫn chưa đạt thì dừng với `OUTLINE_DIRECTOR_NEEDS_ATTENTION`; không viết cảnh, không đưa dàn ý lỗi sang bước duyệt content. Dàn ý tái sử dụng từ lượt bị chặn cũng phải qua cổng này trước khi viết tiếp.
+
+## Cổng cặp cảnh chi tiết đầu tiên
+
+Với truyện dài đã qua cổng dàn ý, kiểm tra nghĩa **chỉ cặp cảnh đầu** sau kiểm tra cấu trúc, trước khi lưu cặp đó và viết cặp tiếp theo. Agy xét lời mở có hé nguồn/cách giải điềm lạ ở cao trào không; mô tả hình có giữ mascot chuẩn và trang phục đã khai không; ảnh `based_on` có liên tục vật thể, vị trí và bối cảnh không; mục đích từng nhịp có khớp ảnh tham chiếu không. Tên truyện và brief có thể chứa cú lật nhưng chỉ là dữ liệu nội bộ, không được tự đưa lời giải vào lời mở. Không bắt mọi chữ trong lời dẫn phải hiện trên ảnh; chỉ bắt đồ vật/hành động nổi bật mà nhịp hứa sẽ cho xem.
+
+Mỗi kết luận cần câu trích **nguyên văn từ đúng trường nguồn** và mã cảnh/ảnh/nhịp. Lỗi lời mở phải đối chiếu lời dẫn cảnh đầu với ý bắt buộc hoặc `purpose` của cảnh lật ở sau; lỗi nhân vật phải đối chiếu hình với hồ sơ nhân vật hoặc mascot chuẩn; lỗi ảnh biến thể phải trích cả ảnh gốc lẫn ảnh biến thể; lỗi nhịp phải trích mục đích nhịp và mô tả của ảnh đúng mã. Mã Python xác thực câu trích, tính kết quả từ từng tiêu chí thay vì tin cờ `pass`. Nếu trượt, người viết chỉ viết lại cặp đầu tối đa hai lần theo ghi chú cụ thể: chốt lời dẫn mới rồi đặt lại coverage, claims và mọi neo theo câu chữ cuối. Không sửa tay các trường của bản đã neo. Hết lượt dừng `OPENING_CHUNK_DIRECTOR_NEEDS_ATTENTION` trước cảnh tiếp theo. Không thêm lượt phê bình này cho các cặp sau, không tạo cổng duyệt mới.
 
 Use `horror/narration-style.md` and the brief's mood and point of view. Give each criterion an integer score from 0 to 2, at least one scene-specific quote as evidence, and concrete notes:
 

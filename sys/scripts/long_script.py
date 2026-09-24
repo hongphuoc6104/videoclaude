@@ -7,9 +7,10 @@ a few scenes per call (two for horror stories). Each call sees the plan, the run
 the last scenes' narration. Chunks are checked as they arrive, merged into one
 content-v3 payload and validated like a single-call draft.
 
-No automatic retry for failed scene chunks: a blocked attempt keeps its finished
-calls, and the next run with the same inputs reuses them. Horror outlines with
-the internal director enabled may be replanned up to two times before any chunk.
+Ordinary failed scene chunks have no automatic retry. A blocked attempt keeps
+finished calls for reuse. Horror outlines with the internal director enabled
+may be replanned up to two times before any chunk; the first detailed chunk
+may separately be rewritten up to two times after its semantic check.
 """
 import copy
 import hashlib
@@ -176,6 +177,11 @@ def plan_prompt(head, b, requests, previous):
         "appearance or outfit.")
     if outline_director.enabled(b):
         prompt += outline_director.plan_guidance()
+        prompt += (' The channel host character must match the canonical mascot: a round white '
+                   'head, two solid black oval eyes, a cheerful OPEN smile with a coral tongue, '
+                   'one light ocean blue short-sleeved shirt and simple stick limbs. Never '
+                   'describe a slight or closed smile. Include every story character’s full '
+                   'outfit, including outerwear worn outdoors.')
     return prompt
 
 
@@ -223,7 +229,7 @@ def reusable(out, key):
 
 def generate(root, b, revision, bhash, head, style, requests, previous, previous_path, out):
     from scripts import agy_pipeline  # tests patch agy_pipeline.invoke
-    from scripts import outline_director
+    from scripts import outline_director, opening_chunk_director
     import jsonschema
     size = chunk_size(root, b)
     key = key_of(b, bhash, requests, previous_path, head, style, size)
@@ -268,17 +274,42 @@ def generate(root, b, revision, bhash, head, style, requests, previous, previous
     plan = state['plan']
     write(out / 'outline.json', {'outline': plan['outline']})
     reusable_chunks = old.get('chunks', {}) if reused_plan == plan else {}
+    old_first_pass = old.get('opening_chunk_pass')
     schema = chunk_schema(root)
     parts, used, summaries, tail = [], set(), [], []
-    for ids in split(b, size):
+    for index, ids in enumerate(split(b, size)):
         name = f'{ids[0]}-{ids[-1]}'
         data = reusable_chunks.get(name)
-        if data is None:
-            data = agy_pipeline.invoke(chunk_prompt(head, style, b, plan, ids, summaries, tail, requests, previous),
-                                       schema, out, timeout=chunk_timeout(b))['structured_output']
-            write(out / f'chunk-{name}.json', data)  # raw reply, kept even when the checks below block it
-            jsonschema.validate(data, schema)
-        used |= check_chunk(b, plan, ids, data, used)
+        opening_gate = director_on and index == 0
+        feedback = None
+        for round_number in range(opening_chunk_director.MAX_REWRITES + 1 if opening_gate else 1):
+            if data is None:
+                prompt = chunk_prompt(head, style, b, plan, ids, summaries, tail, requests, previous)
+                if feedback is not None:
+                    prompt += opening_chunk_director.rewrite_guidance(prior, feedback)
+                data = agy_pipeline.invoke(prompt, schema, out, timeout=chunk_timeout(b))['structured_output']
+                write(out / f'chunk-{name}-round-{round_number}.json' if opening_gate else
+                      out / f'chunk-{name}.json', data)  # raw reply survives a failed check
+                jsonschema.validate(data, schema)
+            new_ids = check_chunk(b, plan, ids, data, used)
+            if not opening_gate:
+                break
+            saved = old_first_pass if round_number == 0 else None
+            if opening_chunk_director.saved_pass_matches(b, plan, data, saved):
+                critique = saved
+            else:
+                critique = opening_chunk_director.assess(root, b, plan, data, out, round_number)
+            if critique['pass']:
+                state['opening_chunk_pass'] = critique
+                # Suffix prompts depend on the opening summary and narration.
+                if data != reusable_chunks.get(name):
+                    reusable_chunks = {}
+                break
+            if round_number == opening_chunk_director.MAX_REWRITES:
+                raise Blocked('OPENING_CHUNK_DIRECTOR_NEEDS_ATTENTION: first chunk quality failed after '
+                              f'{opening_chunk_director.MAX_REWRITES} rewrites; see {out}')
+            prior, feedback, data = data, critique, None
+        used |= new_ids
         state['chunks'][name] = data
         write(out / STATE, state)
         parts.append(data)

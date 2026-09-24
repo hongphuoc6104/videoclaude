@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from pilot import Blocked, ROOT, read, write
-from scripts import long_script, outline_director
+from scripts import long_script, outline_director, opening_chunk_director
 
 
 def historical(case):
@@ -177,13 +177,16 @@ class OutlineDirectorTests(unittest.TestCase):
                                  long_script.chunk_size(ROOT, self.brief))
         saved = {'pass': True, 'outline_sha256': outline_director.hash_plan(self.plan_b)}
         write(prior / 'attempt.json', {'state': 'blocked'})
+        first = {'saved': True, 'story_so_far': 'Minh enters the room.',
+                 'scenes': [{'id': 'SC01', 'narration': 'Opening.'},
+                            {'id': 'SC02', 'narration': 'Arrival.'}]}
         write(prior / 'long-script.json', {'key': key, 'plan': self.plan_b,
                                            'outline_director_pass': saved,
-                                           'chunks': {'SC01-SC02': {
-                                               'saved': True, 'story_so_far': 'Minh enters the room.',
-                                               'scenes': [{'id': 'SC01', 'narration': 'Opening.'},
-                                                          {'id': 'SC02', 'narration': 'Arrival.'}],
-                                           }}})
+                                           'opening_chunk_pass': {
+                                               'pass': True,
+                                               'input_sha256': opening_chunk_director.hash_input(
+                                                   self.brief, self.plan_b, first)},
+                                           'chunks': {'SC01-SC02': first}})
         calls = []
 
         def fake(prompt, schema, workspace, **kwargs):
