@@ -240,6 +240,9 @@ class MediaBatchReviewTests(unittest.TestCase):
         plan, *_ = mr._media_plan(self.p, 'test', self.paths, self.snapshot)
         chunks = plan['text_sources'][str(self.root / 'long-subtitles.srt')]
         self.assertGreater(len(chunks), 1)
+        self.assertTrue(all(item['end_byte'] - item['start_byte'] <= 2500 for item in chunks))
+        self.assertTrue(all(original[item['start_byte']:item['end_byte']].count(b'\n') <= 100
+                            for item in chunks))
         self.assertEqual(b''.join(original[item['start_byte']:item['end_byte']]
                                   for item in chunks), original)
         with patch('scripts.agy_pipeline.invoke', side_effect=self.fake_invoke):

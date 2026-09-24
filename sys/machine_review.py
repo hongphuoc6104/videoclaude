@@ -92,7 +92,9 @@ def _plan_text_chunks(source, directory):
     size = lines = 0
     for char in text:
         encoded = char.encode('utf-8')
-        if current and (size + len(encoded) > 24000 or lines >= 600):
+        # AGY transcript fields are independently capped near 4 KB. Keep the
+        # rendered view_file result below that cap, including line numbers.
+        if current and (size + len(encoded) > 2500 or lines >= 100):
             pieces.append(''.join(current).encode('utf-8'))
             current, size, lines = [], 0, 0
         current.append(char)
