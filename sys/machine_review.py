@@ -613,12 +613,13 @@ def _verify_tool_trace(raw, required, brain_root=None):
         if row.get('source') != 'MODEL' or row.get('type') != 'PLANNER_RESPONSE' or row.get('status') != 'DONE':
             continue
         step = row.get('step_index')
-        if not isinstance(step, int) or len(row.get('tool_calls', [])) != 1:
+        calls = row.get('tool_calls', [])
+        if not isinstance(step, int) or not isinstance(calls, list):
             continue
-        reply = by_step.get(step + 1, {})
-        if reply.get('source') != 'MODEL' or reply.get('type') != 'GENERIC' or reply.get('status') != 'DONE':
-            continue
-        for call in row.get('tool_calls', []):
+        for offset, call in enumerate(calls, 1):
+            reply = by_step.get(step + offset, {})
+            if reply.get('source') != 'MODEL' or reply.get('type') != 'GENERIC' or reply.get('status') != 'DONE':
+                continue
             if call.get('name') != 'view_file':
                 continue
             arg = call.get('args', {}).get('AbsolutePath')

@@ -174,6 +174,30 @@ class VideoReviewTests(unittest.TestCase):
         self.assertIn(str(movie), machine_review._verify_tool_trace(
             {'conversation_id': cid}, [str(movie)], self.root)['view_file'])
 
+    def test_parallel_view_file_replies_are_matched_in_order(self):
+        movie, wav = self.root / 'clip.mp4', self.root / 'clip.wav'
+        movie.write_bytes(b'TEST movie')
+        wav.write_bytes(b'TEST sound')
+        cid = str(uuid.uuid4())
+        transcript = self.root / cid / '.system_generated/logs/transcript.jsonl'
+        transcript.parent.mkdir(parents=True)
+        rows = [{'step_index': 2, 'source': 'MODEL', 'type': 'GENERIC', 'status': 'DONE',
+                 'media': [{'mime_type': 'video/mp4'}]},
+                {'step_index': 1, 'source': 'MODEL', 'type': 'PLANNER_RESPONSE', 'status': 'DONE',
+                 'tool_calls': [{'name': 'view_file', 'args': {'AbsolutePath': json.dumps(str(movie))}},
+                                {'name': 'view_file', 'args': {'AbsolutePath': json.dumps(str(wav))}}]},
+                {'step_index': 3, 'source': 'MODEL', 'type': 'GENERIC', 'status': 'DONE',
+                 'media': [{'mime_type': 'audio/wav'}]}]
+        transcript.write_text('\n'.join(json.dumps(x) for x in rows))
+        viewed = machine_review._verify_tool_trace({'conversation_id': cid},
+                                                   [str(movie), str(wav)], self.root)['view_file']
+        self.assertEqual(set(viewed), {str(movie), str(wav)})
+        rows[2]['media'] = [{'mime_type': 'image/png'}]
+        transcript.write_text('\n'.join(json.dumps(x) for x in rows))
+        with self.assertRaisesRegex(Blocked, 'clip.wav'):
+            machine_review._verify_tool_trace({'conversation_id': cid},
+                                              [str(movie), str(wav)], self.root)
+
 
 if __name__ == '__main__':
     unittest.main()
