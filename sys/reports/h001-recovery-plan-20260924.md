@@ -11,7 +11,7 @@
 | Rà artifact | Subagent QA | Báo cáo lỗi ảnh/giọng theo cảnh và bằng chứng trên file thật; không sửa trạng thái job. |
 | Bộ duyệt chia lô | Subagent review_batches | Mã và kiểm thử trong worktree riêng: lô nhỏ, cache kết quả đã đạt, mỗi tệp/tiêu chí được xem hoặc nghe thật, thiếu/unsupported thì dừng. Không ghép vào H001f vì integrity. |
 | Đường giữ artifact | Subagent reuse_path | Bằng chứng về khả năng chuyển WAV/ảnh sang job mã mới mà vẫn giữ xuất xứ; chỉ triển khai nếu hợp đồng Pilot cho phép. |
-| Tham chiếu khi xoay Flow | Subagent flow-reference-transfer | Nhập ảnh base/nhân vật đã lưu sang profile kế tiếp qua UI, chỉ dùng media ID thật có journal; không gửi ảnh tiếp khi trạng thái nhập chưa rõ. |
+| Tham chiếu khi xoay Flow | Subagent flow-reference-transfer | Nhập ảnh base/nhân vật đã lưu sang profile kế tiếp qua UI, chỉ dùng media ID thật có journal; không gửi ảnh tiếp khi trạng thái nhập chưa rõ. Trước khi nói đã nghiệm thu, thử một lượt **chỉ upload, không sinh ảnh** của base H001 đã collected sang Profile 102 và đối chiếu request/tile/byte thật. |
 | Điều phối | Agent chính | Kiểm tra bằng chứng, chọn đường triển khai, giữ cổng content → media → video, cập nhật người dùng và nhật ký. |
 
 ## Thứ tự phụ thuộc
