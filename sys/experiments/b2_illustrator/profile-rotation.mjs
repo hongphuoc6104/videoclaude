@@ -131,12 +131,15 @@ export function nextProfile(policy,ledger,current,now=new Date()) {
 /**
  * The references a request may carry on `profile`. A Flow media id belongs to the account
  * that created it; another account cannot be assumed to read it. A reference is usable when
- * its owner is this profile, the profile maps it (`media_ids`), or the profile declares
- * `reference_media: "shared"`. Owners come from the attempt journals; media with no journal
+ * its owner is this profile, the profile maps it (`media_ids`), or a target-profile
+ * upload has saved evidence. A bare `reference_media: "shared"` declaration is not
+ * proof that another account can read the media. Owners come from attempt journals; media with no journal
  * owner (the registered mascot, older runs) belong to the home profile.
  * Returns {ok:true, character, base} with mapped ids, or {ok:false, reason}.
  */
-export function referencesFor(policy,profile,request,owners=new Map()) {
+export const verifiedReferenceKey=(profile,ref)=>`${profile}\0${ref.mediaId}\0${ref.sha256}`;
+
+export function referencesFor(policy,profile,request,owners=new Map(),verified=new Map()) {
  const settings=policy.profiles[profile]||{};
  const map=settings.media_ids||{};
  const out={ok:true};
@@ -144,8 +147,10 @@ export function referencesFor(policy,profile,request,owners=new Map()) {
   const ref=request[role];
   if(!ref){out[role]=null;continue;}
   const owner=owners.get(ref.mediaId)||policy.home;
-  if(owner===profile||settings.reference_media==='shared')out[role]=ref;
+  if(owner===profile)out[role]=ref;
   else if(map[ref.mediaId])out[role]={...ref,mediaId:map[ref.mediaId],sourceMediaId:ref.mediaId};
+  else if(verified.has(verifiedReferenceKey(profile,ref)))
+   out[role]={...ref,mediaId:verified.get(verifiedReferenceKey(profile,ref)),sourceMediaId:ref.mediaId};
   else return {ok:false,reason:`REFERENCE_MEDIA_NOT_ON_PROFILE: ${role} ${ref.mediaId} belongs to ${owner}; map it in profiles["${profile}"].media_ids or declare reference_media "shared"`};
  }
  return out;

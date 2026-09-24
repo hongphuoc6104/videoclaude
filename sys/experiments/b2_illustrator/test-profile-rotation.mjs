@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {classifyFailure,loadRotationPolicy,ProfileLedger,nextProfile,referencesFor,resetTimeFor,appendSwitchLog,toolUrlFor} from './profile-rotation.mjs';
+import {classifyFailure,loadRotationPolicy,ProfileLedger,nextProfile,referencesFor,verifiedReferenceKey,resetTimeFor,appendSwitchLog,toolUrlFor} from './profile-rotation.mjs';
 import {openProfileTab,signInOrCaptcha} from './session.mjs';
 import {AttemptStore} from './attempt-store.mjs';
 import {noMedia} from './queue-runner.mjs';
@@ -69,14 +69,17 @@ test('next profile: priority order, skipping exhausted, disabled and unconfigure
  assert.equal(nextProfile(policy,ledger,'Profile 14',now),null);
 });
 
-test('references: own, shared, mapped or refused',()=>{
+test('references: own, mapped or verified; bare shared declaration is refused',()=>{
  const policy={home:'Profile 10',profiles:{'Profile 102':{media_ids:{m10:'m102'}},'Profile 13':{reference_media:'shared'}}};
  const request={character:{mediaId:'m10'},base:{mediaId:'b102'}};
  const owners=new Map([['b102','Profile 102']]);
  assert.equal(referencesFor(policy,'Profile 10',{character:{mediaId:'m10'},base:null},owners).ok,true);
  const mapped=referencesFor(policy,'Profile 102',request,owners);
  assert.equal(mapped.character.mediaId,'m102');assert.equal(mapped.base.mediaId,'b102');
- assert.equal(referencesFor(policy,'Profile 13',request,owners).ok,true);
+ assert.equal(referencesFor(policy,'Profile 13',request,owners).ok,false);
+ const verified=new Map([[verifiedReferenceKey('Profile 13',{mediaId:'m10',sha256:'abc'}),'m13']]);
+ const fixed=referencesFor(policy,'Profile 13',{character:{mediaId:'m10',sha256:'abc'},base:null},owners,verified);
+ assert.equal(fixed.character.mediaId,'m13');
  assert.match(referencesFor(policy,'Profile 14',request,owners).reason,/REFERENCE_MEDIA_NOT_ON_PROFILE/);
 });
 

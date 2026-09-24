@@ -8,11 +8,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {AttemptStore} from './attempt-store.mjs';
 import {executeQueue,runQueue,journalByQueueId,toolStateBlockers,storageCapacity,estimateCharsPerImage,
  LOCAL_STORAGE_QUOTA_CHARS,CHARS_PER_IMAGE_FLOOR} from './queue-runner.mjs';
 import {ProfileLedger,DEFAULT_FAILURE_PATTERNS} from './profile-rotation.mjs';
+import {ReferenceTransferStore} from './reference-transfer.mjs';
 
 const root=fs.mkdtempSync(path.join(os.tmpdir(),'vp-rotation-'));
 test.after(()=>fs.rmSync(root,{recursive:true,force:true}));
@@ -26,13 +28,13 @@ const QUOTA='RESOURCE_EXHAUSTED: image generation quota exceeded for this accoun
 let seq=0;
 class FakeTab {
  /** outcome(prompt) -> {error} | {imageChars} ; extraChars = other localStorage data of the origin. */
- constructor(profile,{url=`https://flow.test/${profile}`,outcome=()=>({}),extraChars=0,items=[]}={}) {
-  Object.assign(this,{profile,toolUrl:url,outcome,extraChars,items:[...items],status:'IDLE',started:[],resets:0});
+ constructor(profile,{url=`https://flow.test/${profile}`,outcome=()=>({}),extraChars=0,items=[],stateError=null}={}) {
+  Object.assign(this,{profile,toolUrl:url,outcome,extraChars,items:[...items],stateError,status:'IDLE',started:[],resets:0});
  }
  url(){return this.toolUrl;}
  summary(i){return {id:i.id,status:i.status,mediaId:i.mediaId||null,error:i.error||null,hasResult:Boolean(i.result?.base64),
   itemChars:i.itemChars||600,topic:i.topic,aspectRatio:i.aspectRatio,characterRefMediaId:i.characterRefMediaId??null,baseImageMediaId:i.baseImageMediaId??null}}
- async snapshot(){return {status:this.status,usedChars:this.extraChars+this.items.reduce((n,i)=>n+(i.itemChars||600),0),items:this.items.map(i=>this.summary(i))};}
+ async snapshot(){return {status:this.status,error:this.stateError,usedChars:this.extraChars+this.items.reduce((n,i)=>n+(i.itemChars||600),0),items:this.items.map(i=>this.summary(i))};}
  async item(id){return this.items.find(i=>i.id===id)||null;}
  async enqueue(r,refs){
   const item={id:`REQ-${++seq}`,status:'QUEUED',topic:r.spec.prompt,aspectRatio:r.spec.ratio,
@@ -60,6 +62,7 @@ class FakeTab {
 function world(name,{tabs,enabled=true,profiles,priority=['Profile 10','Profile 102','Profile 13','Profile 14']}) {
  const dir=path.join(root,name);fs.mkdirSync(dir,{recursive:true});
  const store=new AttemptStore(path.join(dir,'attempts'));
+ const transferStore=new ReferenceTransferStore(path.join(dir,'reference-transfers'));
  const ledger=new ProfileLedger(path.join(dir,'profile-exhaustion.json'));
  const switchLog=path.join(dir,'profile-switches.ndjson');
  const policy={enabled,home:'Profile 10',priority,homeToolUrl:tabs['Profile 10']?.toolUrl,resetHours:null,
@@ -72,8 +75,8 @@ function world(name,{tabs,enabled=true,profiles,priority=['Profile 10','Profile 
    if(!tabs[target])throw Error('FLOW_SIGN_IN_REQUIRED: https://accounts.google.com/');
    return bind(target);
   }});
- const deps={store,ledger,switchLog,policy,driver:b=>b.tab,now:()=>NOW,pollMs:1,itemTimeoutMs:200};
- return {dir,store,ledger,switchLog,policy,switched,deps,bound:bind('Profile 10'),
+ const deps={store,transferStore,transferEvidenceDir:path.join(dir,'transfer-evidence'),ledger,switchLog,policy,driver:b=>b.tab,now:()=>NOW,pollMs:1,itemTimeoutMs:200};
+ return {dir,store,transferStore,ledger,switchLog,policy,switched,deps,bound:bind('Profile 10'),
   log:()=>fs.existsSync(switchLog)?fs.readFileSync(switchLog,'utf8').trim().split('\n').map(l=>JSON.parse(l)):[]};
 }
 const specs=(dir,prompts,extra={})=>prompts.map((prompt,k)=>({testCase:`s${k+1}`,prompt,ratio:'9:16',outDir:path.join(dir,'out'),noCharacter:true,styleNote:'No character reference is attached.',...extra}));
@@ -201,11 +204,122 @@ test('reference media of another account are not used unless mapped',async()=>{
  const ref={characterRefPath:mascot,charMediaId:'mascot-10',noCharacter:false,styleNote:undefined};
  const unmapped=world('refs-unmapped',{tabs,profiles:{'Profile 10':{tool_url:tabs['Profile 10'].toolUrl},'Profile 102':{tool_url:tabs['Profile 102'].toolUrl}}});
  const blocked=await executeQueue(specs(unmapped.dir,['a'],ref),unmapped.bound,unmapped.deps);
- assert.match(blocked.failures[0].reason,/FLOW_NOT_SUBMITTED: REFERENCE_MEDIA_NOT_ON_PROFILE: character mascot-10 belongs to Profile 10/);
+ assert.match(blocked.failures[0].reason,/FLOW_NOT_SUBMITTED: REFERENCE_CHARACTER_REGISTRATION_UNVERIFIED/);
  assert.deepEqual(tabs['Profile 102'].started,[]);
  const tabs2={'Profile 10':new FakeTab('Profile 10',{outcome:()=>({error:QUOTA})}),'Profile 102':new FakeTab('Profile 102')};
  const mapped=world('refs-mapped',{tabs:tabs2,profiles:{'Profile 10':{tool_url:tabs2['Profile 10'].toolUrl},'Profile 102':{tool_url:tabs2['Profile 102'].toolUrl,media_ids:{'mascot-10':'mascot-102'}}}});
  const ok=await executeQueue(specs(mapped.dir,['a'],ref),mapped.bound,mapped.deps);
  assert.equal(ok.items[0].profile,'Profile 102');
  assert.equal(tabs2['Profile 102'].items[0].characterRefMediaId,'mascot-102');
+});
+
+const SOURCE_BASE='11111111-1111-4111-8111-111111111111';
+const TARGET_BASE='22222222-2222-4222-8222-222222222222';
+function verifiedUpload(tab,target=TARGET_BASE) {
+ tab.uploads=[];
+ tab.uploadReference=async(ref,identity,evidenceDir)=>{
+  tab.uploads.push({source:ref.mediaId,profile:identity.profile});
+  fs.mkdirSync(evidenceDir,{recursive:true});
+  const screenshot=path.join(evidenceDir,crypto.randomUUID()+'.png');fs.writeFileSync(screenshot,'TEST ONLY visible uploaded tile');
+  return {targetMediaId:target,evidence:{profile:identity.profile,sourceMediaId:identity.sourceMediaId,sourceSha256:identity.sourceSha256,
+   networkMediaId:target,tileMediaId:target,screenshot,
+   screenshotSha256:crypto.createHash('sha256').update(fs.readFileSync(screenshot)).digest('hex')}};
+ };
+}
+function seedCollectedBase(w,mediaId=SOURCE_BASE,file=png) {
+ const source=w.store.prepare({id:`source-${mediaId}`});
+ w.store.beginSubmission(source,{queueId:`source-${mediaId}`,profile:'Profile 10'});
+ w.store.recordGenerated(source,{mediaId,result:{base64:fs.readFileSync(file).toString('base64'),mimeType:'image/png'}});
+ w.store.recordCollected(source,{path:file});
+}
+
+test('foreign base is registered before the quota resend, with verified ID and durable reuse',async()=>{
+ const tabs={'Profile 10':new FakeTab('Profile 10',{outcome:()=>({error:QUOTA})}),
+  'Profile 102':new FakeTab('Profile 102')};
+ verifiedUpload(tabs['Profile 102']);
+ const profiles={'Profile 10':{tool_url:tabs['Profile 10'].toolUrl},
+  'Profile 102':{tool_url:tabs['Profile 102'].toolUrl,reference_media:'own',media_ids:{}}};
+ const w=world('transfer-base',{tabs,profiles});
+ seedCollectedBase(w);
+ const request=specs(w.dir,['dependent'],{baseRefPath:png,baseMediaId:SOURCE_BASE});
+ const result=await executeQueue(request,w.bound,w.deps);
+ assert.equal(result.failures,undefined);
+ assert.equal(tabs['Profile 102'].uploads.length,1);
+ assert.deepEqual(tabs['Profile 102'].started,['dependent']);
+ assert.equal(tabs['Profile 102'].items[0].baseImageMediaId,TARGET_BASE);
+ assert.equal(result.items[0].profile,'Profile 102');
+ const record=fs.readdirSync(w.transferStore.directory).map(x=>JSON.parse(fs.readFileSync(path.join(w.transferStore.directory,x))));
+ assert.equal(record.length,1);assert.equal(record[0].state,'registered');
+ const attempts=fs.readdirSync(w.store.directory).filter(x=>x.endsWith('.ndjson')).flatMap(x=>
+  fs.readFileSync(path.join(w.store.directory,x),'utf8').trim().split('\n').map(line=>JSON.parse(line)));
+ const submitted=attempts.find(x=>x.event==='submitting'&&x.profile==='Profile 102');
+ assert.deepEqual(submitted.mappedReferences.base,{sourceMediaId:SOURCE_BASE,targetMediaId:TARGET_BASE,
+  sha256:crypto.createHash('sha256').update(fs.readFileSync(png)).digest('hex')});
+ const replay=await executeQueue(request,w.bound,w.deps);
+ assert.equal(replay.items.length,1);assert.equal(tabs['Profile 102'].uploads.length,1);
+});
+
+test('an upload failure stays ambiguous and never resends a pending image or the upload',async()=>{
+ const tabs={'Profile 10':new FakeTab('Profile 10',{outcome:()=>({error:QUOTA})}),
+  'Profile 102':new FakeTab('Profile 102')};
+ let uploads=0;tabs['Profile 102'].uploadReference=async()=>{uploads++;throw Error('UPLOAD_FAILED_AFTER_FILE_CHOSEN');};
+ const w=world('transfer-failure',{tabs,profiles:{'Profile 10':{tool_url:tabs['Profile 10'].toolUrl},
+  'Profile 102':{tool_url:tabs['Profile 102'].toolUrl,reference_media:'own'}}});
+ seedCollectedBase(w);
+ const request=specs(w.dir,['dependent'],{baseRefPath:png,baseMediaId:SOURCE_BASE});
+ const first=await executeQueue(request,w.bound,w.deps);
+ assert.match(first.failures[0].reason,/REFERENCE_TRANSFER_FAILED: UPLOAD_FAILED_AFTER_FILE_CHOSEN/);
+ assert.deepEqual(tabs['Profile 102'].started,[]);
+ const second=await runQueue(request,w.bound,w.deps);
+ assert.match(second.reason,/REFERENCE_TRANSFER_RECONCILIATION_REQUIRED/);
+ assert.equal(uploads,1);assert.deepEqual(tabs['Profile 102'].started,[]);
+});
+
+test('sign-in and CAPTCHA on the new profile stop before upload and generation',async()=>{
+ for(const [label,error] of [['login','Please sign in'],['captcha','CAPTCHA verification required']]) {
+  const tabs={'Profile 10':new FakeTab('Profile 10',{outcome:()=>({error:QUOTA})}),
+   'Profile 102':new FakeTab('Profile 102',{stateError:error})};
+  let uploads=0;tabs['Profile 102'].uploadReference=async()=>{uploads++;throw Error('SHOULD_NOT_UPLOAD');};
+  const w=world('transfer-'+label,{tabs,profiles:{'Profile 10':{tool_url:tabs['Profile 10'].toolUrl},
+   'Profile 102':{tool_url:tabs['Profile 102'].toolUrl,reference_media:'own'}}});
+  const request=specs(w.dir,['dependent'],{baseRefPath:png,baseMediaId:SOURCE_BASE});
+  const result=await executeQueue(request,w.bound,w.deps);
+  assert.match(result.failures[0].reason,/FLOW_CAPTCHA_OR_SIGN_IN_REQUIRED/);
+  assert.equal(uploads,0);assert.deepEqual(tabs['Profile 102'].started,[]);
+ }
+});
+
+test('ambiguous image status is never treated as no-media for transfer or rotation',async()=>{
+ const tabs={'Profile 10':new FakeTab('Profile 10',{outcome:()=>({stuck:true})}),
+  'Profile 102':new FakeTab('Profile 102')};
+ let uploads=0;tabs['Profile 102'].uploadReference=async()=>{uploads++;throw Error('SHOULD_NOT_UPLOAD');};
+ const w=world('transfer-ambiguous',{tabs});
+ const result=await executeQueue(specs(w.dir,['dependent'],{baseRefPath:png,baseMediaId:SOURCE_BASE}),w.bound,w.deps);
+ assert.match(result.failures[0].reason,/FLOW_TIMEOUT_RECONCILE_NO_RESUBMIT/);
+ assert.equal(uploads,0);assert.equal(w.switched.length,0);
+});
+
+test('a foreign base with no collected source-byte journal is refused before upload',async()=>{
+ const tabs={'Profile 10':new FakeTab('Profile 10',{outcome:()=>({error:QUOTA})}),
+  'Profile 102':new FakeTab('Profile 102')};
+ let uploads=0;tabs['Profile 102'].uploadReference=async()=>{uploads++;throw Error('SHOULD_NOT_UPLOAD');};
+ const w=world('transfer-no-provenance',{tabs,profiles:{'Profile 10':{tool_url:tabs['Profile 10'].toolUrl},
+  'Profile 102':{tool_url:tabs['Profile 102'].toolUrl,reference_media:'own'}}});
+ const result=await executeQueue(specs(w.dir,['dependent'],{baseRefPath:png,baseMediaId:SOURCE_BASE}),w.bound,w.deps);
+ assert.match(result.failures[0].reason,/REFERENCE_BASE_PROVENANCE_UNVERIFIED/);
+ assert.equal(uploads,0);assert.deepEqual(tabs['Profile 102'].started,[]);
+});
+
+test('a collected base changed after Flow generation is refused before upload',async()=>{
+ const tabs={'Profile 10':new FakeTab('Profile 10',{outcome:()=>({error:QUOTA})}),
+  'Profile 102':new FakeTab('Profile 102')};
+ let uploads=0;tabs['Profile 102'].uploadReference=async()=>{uploads++;throw Error('SHOULD_NOT_UPLOAD');};
+ const w=world('transfer-tampered-base',{tabs,profiles:{'Profile 10':{tool_url:tabs['Profile 10'].toolUrl},
+  'Profile 102':{tool_url:tabs['Profile 102'].toolUrl,reference_media:'own'}}});
+ const copy=path.join(w.dir,'saved-base.png');fs.copyFileSync(png,copy);
+ seedCollectedBase(w,SOURCE_BASE,copy);
+ fs.writeFileSync(copy,'TAMPERED AFTER COLLECTION');
+ const result=await executeQueue(specs(w.dir,['dependent'],{baseRefPath:copy,baseMediaId:SOURCE_BASE}),w.bound,w.deps);
+ assert.match(result.failures[0].reason,/REFERENCE_BASE_PROVENANCE_UNVERIFIED/);
+ assert.equal(uploads,0);assert.deepEqual(tabs['Profile 102'].started,[]);
 });

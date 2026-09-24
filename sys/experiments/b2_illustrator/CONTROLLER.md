@@ -67,3 +67,10 @@ session command handlers requires restarting the service and a new Chrome consen
   appended to `results/controller/profile-switches.ndjson`. CAPTCHA, sign-in, storage and unknown
   errors still stop the queue; the switch never signs in or types anything.
 - queue-runner is cached in the session process: restart the session to load these changes.
+- A foreign `based_on` image can be uploaded into the next profile only when its saved
+  bytes match the original generated-result bytes in the attempt journal. The transfer
+  journal records the original media ID, target profile, uploaded media ID, network/UI
+  agreement and a screenshot. It is checked before any pending generation is enqueued.
+  Missing proof or an interrupted upload stops the queue for reconciliation; a plain
+  image upload is not treated as a registered Character. The Flow upload selector and
+  response/tile ID extraction have not had a live acceptance run on the next profile.

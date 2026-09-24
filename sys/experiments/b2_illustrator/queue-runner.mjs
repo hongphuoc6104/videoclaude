@@ -10,7 +10,9 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {AttemptStore} from './attempt-store.mjs';
 import {findToolFrame, toolUrl, safeResults} from './controller.mjs';
-import {DEFAULT_FAILURE_PATTERNS,classifyFailure,itemErrorText,stateErrorText,loadRotationPolicy,ProfileLedger,nextProfile,toolUrlFor,referencesFor,appendSwitchLog} from './profile-rotation.mjs';
+import {DEFAULT_FAILURE_PATTERNS,classifyFailure,itemErrorText,stateErrorText,loadRotationPolicy,ProfileLedger,nextProfile,toolUrlFor,referencesFor,verifiedReferenceKey,appendSwitchLog} from './profile-rotation.mjs';
+import {ReferenceTransferStore,ensureReferenceTransfer} from './reference-transfer.mjs';
+import {uploadReferenceViaUi} from './flow-reference-upload.mjs';
 const here=path.dirname(fileURLToPath(import.meta.url));
 const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
 function reference(file,mediaId) {
@@ -19,7 +21,7 @@ function reference(file,mediaId) {
  const bytes=fs.readFileSync(file), ext=path.extname(file).toLowerCase();
  const mimeType={'.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp'}[ext];
  if(!mimeType)throw Error('REFERENCE_FORMAT_UNSUPPORTED');
- return {mediaId,base64:bytes.toString('base64'),mimeType,name:path.basename(file),sha256:hash(bytes)};
+ return {mediaId,base64:bytes.toString('base64'),mimeType,name:path.basename(file),sha256:hash(bytes),path:path.resolve(file)};
 }
 const cfg = fs.existsSync(path.resolve(here, '../../config.json')) ? JSON.parse(fs.readFileSync(path.resolve(here, '../../config.json'), 'utf8')) : {};
 const configuredModel = cfg.flow_model || 'Nano Banana 2';
@@ -82,15 +84,29 @@ export function noMedia(item,patterns=DEFAULT_FAILURE_PATTERNS) {
 
 /** One scan of every journal: last state by the tool's queue id, and which profile produced each media id. */
 export function journalIndex(directory) {
- const byQueueId=new Map(),owners=new Map();
+ const byQueueId=new Map(),owners=new Map(),provenance=new Map();
  for(const name of fs.existsSync(directory)?fs.readdirSync(directory).filter(x=>x.endsWith('.ndjson')):[]) {
   const events=fs.readFileSync(path.join(directory,name),'utf8').split('\n').filter(Boolean).map(line=>JSON.parse(line));
   const submission=events.find(e=>e.event==='submitting');
   if(submission?.queueId)byQueueId.set(submission.queueId,events.filter(e=>e.state).at(-1)?.state);
   const generated=events.find(e=>e.event==='generated');
-  if(generated?.mediaId&&submission?.profile)owners.set(generated.mediaId,submission.profile);
+  if(generated?.mediaId&&submission?.profile) {
+   if(owners.has(generated.mediaId)&&owners.get(generated.mediaId)!==submission.profile)
+    throw Error(`REFERENCE_MEDIA_OWNER_CONFLICT: ${generated.mediaId}`);
+   owners.set(generated.mediaId,submission.profile);
+   const collected=events.find(e=>e.event==='collected')?.collection;
+   if(collected?.path&&fs.existsSync(collected.path)&&generated.result?.base64) {
+    const savedHash=hash(fs.readFileSync(collected.path));
+    const generatedHash=hash(Buffer.from(generated.result.base64,'base64'));
+    if(savedHash===generatedHash) {
+     if(provenance.has(generated.mediaId)&&provenance.get(generated.mediaId).sha256!==savedHash)
+      throw Error(`REFERENCE_MEDIA_BYTES_CONFLICT: ${generated.mediaId}`);
+     provenance.set(generated.mediaId,{profile:submission.profile,path:collected.path,sha256:savedHash});
+    }
+   }
+  }
  }
- return {byQueueId,owners};
+ return {byQueueId,owners,provenance};
 }
 /** Last known state of every journaled request, by the tool's queue id. */
 export function journalByQueueId(directory) {return journalIndex(directory).byQueueId;}
@@ -126,7 +142,8 @@ export async function resetToolState(page,store,{release=[],reason='localStorage
  * The browser side of one tool tab. Snapshots carry no image data (only sizes and flags), so
  * polling does not copy megabytes of base64 over CDP every half second; a result is read once.
  */
-export function playwrightDriver(page) {
+export function playwrightDriver(binding) {
+ const page=binding.page||binding;
  let frame=null;
  const tool=async()=>frame||(frame=await findToolFrame(page));
  return {
@@ -174,6 +191,11 @@ export function playwrightDriver(page) {
   async setWorkers() {await (await tool()).getByRole('combobox').nth(3).selectOption({label:'4 Workers'});},
   async start() {await (await tool()).getByRole('button',{name:'Start Queue',exact:true}).click();},
   async reset(store,options) {frame=await resetToolState(page,store,options);},
+  async uploadReference(ref,identity,evidenceDir) {
+   if(!binding.page)throw Error('REFERENCE_TRANSFER_BOUND_PROFILE_REQUIRED');
+   try {return await uploadReferenceViaUi(binding,ref,identity,evidenceDir);}
+   finally {frame=null;}
+  },
  };
 }
 
@@ -209,7 +231,7 @@ export async function executeQueue(specs,bound,deps={}) {
  const policy=deps.policy||loadRotationPolicy();
  const ledger=deps.ledger||new ProfileLedger(path.join(safeResults(),'profile-exhaustion.json'));
  const switchLog=deps.switchLog||path.join(safeResults(),'profile-switches.ndjson');
- const makeDriver=deps.driver||(b=>playwrightDriver(b.page));
+ const makeDriver=deps.driver||(b=>playwrightDriver(b));
  const now=deps.now||(()=>new Date());
  const pollMs=deps.pollMs??500,itemTimeoutMs=deps.itemTimeoutMs??180000;
  const limit=policy.priority.length;
@@ -219,11 +241,16 @@ export async function executeQueue(specs,bound,deps={}) {
  // A standing attempt that may have reached Flow without a known outcome blocks the whole group.
  if(chains.some(c=>['submitting','unknown'].includes(c.attempt.state)))throw Error('FLOW_RECONCILIATION_REQUIRED: existing attempt; no resubmission');
  const needsOwners=requests.some(r=>r.character||r.base);
- const owners=needsOwners?journalIndex(store.directory).owners:new Map();
+ const indexed=needsOwners?journalIndex(store.directory):{owners:new Map(),provenance:new Map()};
+ const {owners,provenance}=indexed;
 
  let pending=chains.map((c,i)=>c.attempt.state==='prepared'?i:-1).filter(i=>i>=0);
  let profile=currentProfile(bound,policy),driver=null,dispatched=false,started=null;
  const failed=new Map(),switches=[];
+ const verifiedRefs=new Map();
+ let transferStore=deps.transferStore||null;
+ const getTransferStore=()=>transferStore||=new ReferenceTransferStore(path.join(safeResults(),'reference-transfers','journals'));
+ const transferEvidenceDir=()=>deps.transferEvidenceDir||path.join(safeResults(),'reference-transfers','evidence');
  // No further dispatch in this call. Before anything was sent the whole call fails as not submitted;
  // afterwards each request not yet sent is reported as such (its journal still reads prepared).
  const stop=reason=>{
@@ -273,11 +300,59 @@ export async function executeQueue(specs,bound,deps={}) {
   }
   if(snap.status==='UNKNOWN'||snap.items.some(i=>!['COMPLETED','ACCEPTED'].includes(i.status))){stop('UNRESOLVED_FLOW_QUEUE');break;}
   if(fits===0){stop(`TOOL_STORAGE_BUDGET_EXHAUSTED: ${snap.usedChars} chars used after compaction; other data fills the tool's storage`);break;}
-  // 4. References this profile can use (a media id belongs to the account that made it).
+  // 4. Transfer every foreign reference needed by pending requests BEFORE enqueuing
+  // any generation on the new profile. A started upload with no proven media ID is
+  // ambiguous and cannot be retried automatically, just like a submitted image.
+  const needed=new Map(),settings=policy.profiles[profile]||{};
+  let transferFailure=null;
+  for(const i of pending)for(const role of ['character','base']) {
+   const ref=requests[i][role];if(!ref)continue;
+   const owner=owners.get(ref.mediaId)||policy.home;
+   if(owner===profile||settings.media_ids?.[ref.mediaId])continue;
+   // A regular media upload has not been proven equivalent to registering a
+   // Flow Character. Existing character mappings remain usable; unknown ones
+   // stop rather than silently treating an uploaded image as a character.
+   if(role==='character') {transferFailure=`REFERENCE_CHARACTER_REGISTRATION_UNVERIFIED: ${ref.mediaId}`;break;}
+   // A generated base must be tied to the exact collected bytes and submitting
+   // profile. Never call a foreign base "home-owned" merely because its media ID
+   // was absent from the journal.
+   if(role==='base') {
+    const source=provenance.get(ref.mediaId);
+    if(!source||source.profile!==owner||source.sha256!==ref.sha256) {
+     transferFailure=`REFERENCE_BASE_PROVENANCE_UNVERIFIED: ${ref.mediaId}`;break;
+    }
+   }
+   const key=verifiedReferenceKey(profile,ref);
+   if(!verifiedRefs.has(key))needed.set(key,{ref,owner});
+  }
+  if(transferFailure){stop(transferFailure);break;}
+  for(const [key,{ref,owner}] of needed) {
+   if(typeof driver.uploadReference!=='function') {transferFailure='REFERENCE_UPLOAD_UNAVAILABLE';break;}
+   const identity={profile,owner,sourceMediaId:ref.mediaId,sourceSha256:ref.sha256,toolUrl:expectedUrl};
+   try {
+    const targetId=await ensureReferenceTransfer(getTransferStore(),identity,ref,
+     (source,record)=>driver.uploadReference(source,record,transferEvidenceDir()));
+    verifiedRefs.set(key,targetId);
+    appendSwitchLog(switchLog,{event:'reference_transferred',from:owner,to:profile,
+     sourceMediaId:ref.mediaId,sourceSha256:ref.sha256,targetMediaId:targetId});
+   } catch(error){transferFailure=`REFERENCE_TRANSFER_FAILED: ${error.message}`;break;}
+  }
+  if(transferFailure){stop(transferFailure);break;}
+  // Upload navigation reloads the tool tab. Recheck account, unresolved state and
+  // storage before any enqueue, rather than trusting the pre-upload snapshot.
+  if(needed.size) {
+   snap=await driver.snapshot();
+   const blocked=[stateErrorText(snap),...snap.items.map(itemErrorText)].find(t=>['captcha','login'].includes(classifyFailure(t,policy.patterns)));
+   if(blocked){stop(`FLOW_CAPTCHA_OR_SIGN_IN_REQUIRED: ${blocked}`);break;}
+   if(snap.status==='UNKNOWN'||snap.items.some(i=>!['COMPLETED','ACCEPTED'].includes(i.status))){stop('UNRESOLVED_FLOW_QUEUE');break;}
+   perImage=estimateCharsPerImage(snap.items);fits=storageCapacity({usedChars:snap.usedChars,perImageChars:perImage});
+   if(fits===0){stop('TOOL_STORAGE_BUDGET_EXHAUSTED_AFTER_REFERENCE_TRANSFER');break;}
+  }
+  // 5. References this profile can use (a media id belongs to the account that made it).
   const chunk=[],refs=new Map();
   for(const i of pending) {
    if(chunk.length===fits)break;
-   const plan=referencesFor(policy,profile,requests[i],owners);
+   const plan=referencesFor(policy,profile,requests[i],owners,verifiedRefs);
    if(plan.ok){chunk.push(i);refs.set(i,plan);}
    else failed.set(i,`FLOW_NOT_SUBMITTED: ${plan.reason}`);
   }
@@ -286,7 +361,7 @@ export async function executeQueue(specs,bound,deps={}) {
    if(!dispatched)throw Error([...failed.values()][0].replace(/^FLOW_NOT_SUBMITTED: /,''));
    break;
   }
-  // 5. Queue the chunk in the tool, check every mapping, journal the whole chunk, then Start.
+  // 6. Queue the chunk in the tool, check every mapping, journal the whole chunk, then Start.
   const ids=[];
   try {
    for(const i of chunk) {
@@ -299,8 +374,15 @@ export async function executeQueue(specs,bound,deps={}) {
    if((await driver.snapshot()).items.filter(i=>i.status==='QUEUED').length!==ids.length)throw Error('UNEXPECTED_QUEUED_REQUEST');
   } catch(error){stop(error.message);break;}
   // Mark the entire chunk before Start. A crash anywhere makes retry conservative.
-  chunk.forEach((i,k)=>store.beginSubmission(chains[i].attempt,{queueId:ids[k],screenshot:null,profile,toolUrl:expectedUrl,
-   resend:chains[i].resend||undefined,storage:{usedChars:snap.usedChars,perImageChars:perImage,capacity:fits}}));
+  chunk.forEach((i,k)=>{
+   const mapped=refs.get(i);
+   store.beginSubmission(chains[i].attempt,{queueId:ids[k],screenshot:null,profile,toolUrl:expectedUrl,
+    mappedReferences:{character: mapped.character&&{sourceMediaId:mapped.character.sourceMediaId||mapped.character.mediaId,
+     targetMediaId:mapped.character.mediaId,sha256:mapped.character.sha256},
+     base:mapped.base&&{sourceMediaId:mapped.base.sourceMediaId||mapped.base.mediaId,
+      targetMediaId:mapped.base.mediaId,sha256:mapped.base.sha256}},
+    resend:chains[i].resend||undefined,storage:{usedChars:snap.usedChars,perImageChars:perImage,capacity:fits}});
+  });
   dispatched=true;started??=Date.now();
   pending=pending.filter(i=>!chunk.includes(i));
   await driver.start();

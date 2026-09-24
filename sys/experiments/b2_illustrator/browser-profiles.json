@@ -17,7 +17,7 @@
       "note": "Home profile: owns the Flow project, the VP Stickman Lab tool (tool_url in machine.local.json) and the registered mascot media de94a39b-155f-4afe-acbb-d9d4b59ad532."
     },
     "Profile 102": {
-      "note": "Rotation candidate, not verified in Flow. Needs tool_url (this account's own copy of the tool) and either media_ids {home id: this account's id} or reference_media \"shared\" before it can take images with references.",
+      "note": "Rotation candidate, not verified in Flow. Needs tool_url and verified character media_ids. Foreign base images require a witnessed upload into this profile; a bare shared declaration is insufficient.",
       "tool_url": null,
       "reference_media": "own",
       "media_ids": {}
