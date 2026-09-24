@@ -33,6 +33,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
 LEDGER = ROOT / 'ledger.json'
 BRIEFS = ROOT / 'briefs'
 SEED_TAG = 'Mã hạt giống truyện: '

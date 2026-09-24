@@ -2,6 +2,8 @@
 import json
 import copy
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -16,12 +18,12 @@ class HorrorHandoffTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
-        for name in ('schemas', '.agents', 'renderer', 'examples', 'scripts', 'assets'):
+        for name in ('schemas', '.agents', 'renderer', 'examples', 'scripts', 'assets', 'vocab'):
             shutil.copytree(ROOT / name, self.root / name)
         shutil.copytree(ROOT / 'horror', self.root / 'horror',
                         ignore=shutil.ignore_patterns('ledger.json', 'briefs', '.ledger.lock'))
         for name in ('pilot.py', 'workflow.py', 'machine_review.py', 'image_pipeline.py',
-                     'media_import.py', 'content_contract.py', 'prompt_templates.py',
+                     'media_import.py', 'content_contract.py', 'sound.py', 'prompt_templates.py',
                      'adapters.py', 'config.json', 'AGENTS.md', 'GEMINI.md'):
             shutil.copy(ROOT / name, self.root / name)
         self.patches = [patch.object(bank, 'ROOT', self.root / 'horror'),
@@ -69,6 +71,13 @@ class HorrorHandoffTests(unittest.TestCase):
             self.assertEqual(workflow.status(pilot, 'new')['stages'][0]['state'], 'pending')
         finally:
             pilot.db.close()
+
+    def test_documented_script_command_can_import_pilot(self):
+        result = subprocess.run(
+            [sys.executable, str(self.root / 'horror/bank.py'), 'continue', 'old', 'new'],
+            cwd=self.root, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(bank.ledger()['seeds']['H001']['job'], 'new')
 
     def test_partial_creation_rolls_back_only_when_no_new_db_identity(self):
         original = workflow.new
