@@ -99,7 +99,9 @@ class MediaImportTests(unittest.TestCase):
                 'source': 'google-flow-browser', 'status': 'downloaded',
                 'forgeId': 'TEST-MEDIA-' + args[args.index('--id') + 1]})
         write(folder.parent / 'ui-proof.json', {'passed': True,
-            'mode': 'character-register' if registration else 'image', 'characters': chars})
+            'mode': 'character-register' if registration else 'image', 'characters': chars,
+            **({'base_image': args[args.index('--base-image') + 1]}
+               if '--base-image' in args else {})})
         Image.new('RGB', (40, 40), 'blue').save(folder.parent / 'before-submit.png')
         return SimpleNamespace(returncode=0, stdout='TEST ONLY', stderr='')
 
@@ -159,6 +161,17 @@ class MediaImportTests(unittest.TestCase):
         self.assertEqual(output['stages'][1]['state'], 'pending')
         self.assertEqual(self.p.rows('target')['audio']['state'], 'approved')
 
+    def test_public_cli_import_selective_image_cache(self):
+        self.new_job('target', lambda c: c['scenes'][1]['images'][0].update(
+            description=c['scenes'][1]['images'][0]['description'] + ' Wider desk view.'))
+        result = subprocess.run([sys.executable, str(self.root / 'pilot.py'),
+            'import-media', 'target', '--from', 'source', '--part', 'image-cache'],
+            cwd=self.root, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        output = json.loads(result.stdout)
+        self.assertEqual((output['reused_images'], output['generated_images']), (5, 1))
+        self.assertEqual(self.p.payload('target', 'images')['checkpoint'], 'references')
+
     def test_audio_only_allows_changed_image_plan_but_not_changed_narration(self):
         self.new_job('target', lambda c: c['scenes'][0]['images'][0].update(
             description=c['scenes'][0]['images'][0]['description'] + ' Wider desk view.'))
@@ -171,6 +184,99 @@ class MediaImportTests(unittest.TestCase):
         self.new_job('other', lambda c: c['scenes'][0].update(narration=c['scenes'][0]['narration'] + ' Khác.'))
         with self.assertRaisesRegex(Blocked, 'narration differs'):
             media_import.import_media(self.p, 'other', 'source', 'audio')
+
+    def test_selective_image_cache_reuses_unchanged_scenes_without_new_requests(self):
+        self.new_job('target', lambda c: c['scenes'][1]['images'][0].update(
+            description=c['scenes'][1]['images'][0]['description'] + ' Wider desk view.'))
+        media_import.import_media(self.p, 'target', 'source', 'audio')
+        result = media_import.import_media(self.p, 'target', 'source', 'image-cache')
+        self.assertEqual((result['reused_images'], result['generated_images']), (5, 1))
+        self.assertEqual(self.p.rows('target')['images']['state'], 'pending')
+        self.assertEqual(self.p.payload('target', 'images')['checkpoint'], 'references')
+        image_calls = []
+        def record_flow(p, *args, **kwargs):
+            if args[0] == 'image':
+                image_calls.append(args)
+            return self.fake_flow(p, *args, **kwargs)
+        with patch('adapters.gflow', side_effect=record_flow), \
+             patch('machine_review.review', side_effect=self.fake_review):
+            review = workflow.prepare(self.p, 'target', 'media')
+        self.assertEqual(len(image_calls), 1)
+        self.assertEqual(len(self.p.payload('target', 'images')['items']), 6)
+        self.assertEqual(review['stage'], 'media')
+        self.p.validate('target', 'images')
+        plan, _, _, _, _, verified = machine_review._media_plan(
+            self.p, 'target', review['assets'], review['snapshot'])
+        self.assertEqual(len(plan['batches']), 4)
+        self.assertTrue(verified['import_provenance_files'])
+        self.assertFalse(self.p.path('target', review['decision']).exists())
+        workflow.reject(self.p, 'target', 'media', review['revision'],
+                        'Redraw the imported opening scene', scene='SC01')
+        image_calls.clear()
+        with patch('adapters.gflow', side_effect=record_flow), \
+             patch('machine_review.review', side_effect=self.fake_review):
+            repaired = workflow.prepare(self.p, 'target', 'media')
+        self.assertEqual(repaired['revision'], 2)
+        self.assertEqual(len(image_calls), 1)
+        self.p.validate('target', 'images')
+
+    def test_selective_reuse_preserves_a_based_on_chain_and_fails_on_tamper(self):
+        def add_chain(content):
+            scene = content['scenes'][0]
+            image = copy.deepcopy(scene['images'][0])
+            image.update(id='SC01_I2', based_on='SC01_I1',
+                         description='Góc gần hơn trong cùng văn phòng.',
+                         preserve='Giữ cùng hai nhân vật và bàn báo cáo.',
+                         change='Máy quay tiến gần hơn.')
+            scene['images'].append(image)
+            beat = copy.deepcopy(scene['beats'][0])
+            beat.update(id='SC01_B2', image_id='SC01_I2',
+                        anchor={'vi': {'quote': 'Hãy thử cách nói rõ việc', 'occurrence': 1}})
+            scene['beats'].append(beat)
+        self.new_job('chain-source', add_chain)
+        with patch('adapters.audio', side_effect=self.fake_audio), \
+             patch('adapters.gflow', side_effect=self.fake_flow), \
+             patch('machine_review.review', side_effect=self.fake_review):
+            workflow.prepare(self.p, 'chain-source', 'media')
+        def destination(content):
+            add_chain(content)
+            content['scenes'][1]['images'][0]['description'] += ' Wider desk view.'
+        self.new_job('chain-target', destination)
+        media_import.import_media(self.p, 'chain-target', 'chain-source', 'audio')
+        result = media_import.import_media(self.p, 'chain-target', 'chain-source', 'image-cache')
+        self.assertEqual((result['reused_images'], result['generated_images']), (6, 1))
+        calls = []
+        def record_flow(p, *args, **kwargs):
+            if args[0] == 'image':
+                calls.append(args)
+            return self.fake_flow(p, *args, **kwargs)
+        with patch('adapters.gflow', side_effect=record_flow), \
+             patch('machine_review.review', side_effect=self.fake_review):
+            workflow.prepare(self.p, 'chain-target', 'media')
+        self.assertEqual(len(calls), 1)
+        payload = self.p.payload('chain-target', 'images')
+        first, second = payload['items'][:2]
+        self.assertEqual(first['image_id'], 'SC01_I1')
+        self.assertEqual(second['image_id'], 'SC01_I2')
+        journal = read(self.p.path('chain-target', second['request']))
+        self.assertEqual(journal['identity']['base_image']['sha256'], first['sha256'])
+        self.p.validate('chain-target', 'images')
+        def break_chain(content):
+            destination(content)
+            content['scenes'][0]['images'][1]['based_on'] = None
+        self.new_job('chain-change', break_chain)
+        changed = media_import.import_media(self.p, 'chain-change', 'chain-source', 'image-cache')
+        self.assertEqual((changed['reused_images'], changed['generated_images']), (4, 3))
+        self.p.path('chain-target', second['request']).write_text('{}')
+        with self.assertRaises(Blocked):
+            self.p.validate('chain-target', 'images')
+
+    def test_selective_cache_rejects_non_image_content_change(self):
+        self.new_job('target', lambda c: c['scenes'][1].update(
+            action=c['scenes'][1]['action'] + ' rồi dừng lại.'))
+        with self.assertRaisesRegex(Blocked, 'only scene image plans may differ'):
+            media_import.import_media(self.p, 'target', 'source', 'image-cache')
+        self.assertEqual(self.p.rows('target')['images']['revision'], 0)
 
     def test_source_tampering_or_missing_asset_blocks_before_import(self):
         self.new_job('target')

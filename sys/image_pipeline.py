@@ -32,11 +32,13 @@ def content(p, j):
 
 
 def planned_units(p, j):
+    return planned_units_from_content(content(p, j), p.brief(j)[0])
+
+
+def planned_units_from_content(c, brief):
     from scripts.story_plan import image_units, text_prompt
-    c = content(p,j)
     units = image_units(c)
     if c.get('schema_version') != '3.0': return units
-    brief = p.brief(j)[0]
     ratios = ['9:16','16:9'] if brief['aspect_ratio']=='dual' else [brief['aspect_ratio']]
     return [dict(u, id=u['id']+'_'+ratio.replace(':','x'), image_id=u['id'], ratio=ratio,
                  based_on=(u['based_on']+'_'+ratio.replace(':','x')) if u['based_on'] else None,
@@ -579,6 +581,9 @@ def reference_prompt(c, char):
 def register(p, j, ref):
     host = ref['character_id'] in canonical_ids(p)
     media = None if host else media_id_of(p, j, ref['request'])
+    if not host and not media and ref['request'].startswith('imports/'):
+        from media_import import imported_reference_media_id
+        media = imported_reference_media_id(p, j, ref)
     if not host and not media:
         raise Blocked('M2_REFERENCE_MEDIA: reference of ' + ref['character_id'] + ' has no Flow media id; reject and regenerate it')
     r = request(p, j, 'register:' + ref['character_id'] + ':' + ref['sha256'], ref['prompt'],
@@ -653,16 +658,22 @@ def produce(p, j, out):
             refs.append(dict(asset, character_id=char['id'], name=name))
     else:
         refs = approved(p, j, 'references')['payload']['references']
+        from media_import import selected_image_reuse
+        reuse = selected_image_reuse(p, j)
+        reused = reuse[1] if reuse else {}
+        scenes = planned_units(p,j)
+        to_generate = [scene for scene in scenes if scene['id'] not in reused]
+        needed_characters = {cid for scene in to_generate for cid in scene['character_ids']}
         registrations = {}
-        for i, r0 in enumerate(refs):
+        for i, r0 in enumerate(ref for ref in refs if ref['character_id'] in needed_characters):
             try:
                 registrations[r0['character_id']] = register(p, j, r0)
             except Blocked as ex:
                 _reraise_if_expired(ex, i, len(refs))
-        scenes = planned_units(p,j)
         cfg = read(p.root / 'config.json')
 
-        completed = {}
+        completed = {target: {'target': target, 'path': item['path'], 'sha256': item['sha256']}
+                     for target, item in reused.items()}
         def process_scene(scene):
             linked = [registrations[x] for x in scene['character_ids']]
             base = completed.get(scene.get('based_on'))
@@ -681,6 +692,8 @@ def produce(p, j, out):
         # one global UI setting, so a whole ratio finishes before the next.
         ratio_order, ratio_units = [], {}
         for unit in scenes:
+            if unit['id'] in reused:
+                continue
             rk = unit.get('ratio')
             if rk not in ratio_units:
                 ratio_units[rk] = []
@@ -707,10 +720,13 @@ def produce(p, j, out):
         # Re-assemble in the original planned order (scene-major, ratio-minor)
         # regardless of the ratio-major order used to submit requests above.
         for unit in scenes:
-            scene_id, prompt, linked, r = outcomes[unit['id']]
-            item = attach(p, j, r, scene_id, prompt, linked, out)
-            if c.get('schema_version') == '3.0':
-                item.update(scene_id=unit['scene_id'],image_id=unit['image_id'],ratio=unit['ratio'])
+            if unit['id'] in reused:
+                item = reused[unit['id']]
+            else:
+                scene_id, prompt, linked, r = outcomes[unit['id']]
+                item = attach(p, j, r, scene_id, prompt, linked, out)
+                if c.get('schema_version') == '3.0':
+                    item.update(scene_id=unit['scene_id'],image_id=unit['image_id'],ratio=unit['ratio'])
             items.append(item)
 
     entries = refs + items + proofs
@@ -724,6 +740,8 @@ def produce(p, j, out):
     payload = {'schema_version': '2.0', 'checkpoint': s, 'content_hash': p.rows(j)['content']['hash'],
                'signature': signature(p, j, s), 'items': items, 'references': refs, 'proofs': proofs,
                'contact_sheet': str((out / 'contact-sheet.jpg').relative_to(p.job(j)))}
+    if s == 'final' and reuse:
+        payload['image_reuse_receipt'] = reuse[0]
     return payload
 
 
@@ -732,6 +750,15 @@ def check(p, j, data):
     if data.get('import_receipt'):
         from media_import import check_imported_images
         return check_imported_images(p,j,data)
+    reused = {}
+    reuse_info = None
+    if data.get('image_reuse_receipt'):
+        if data['checkpoint'] != 'final':
+            raise Blocked('IMPORT_IMAGE_CACHE: reuse applies only to final images')
+        from media_import import reused_images
+        reused, source_references, reuse_info = reused_images(p, j, data['image_reuse_receipt'])
+        if data['references'] != source_references:
+            raise Blocked('IMPORT_IMAGE_CACHE: source references changed')
     c = content(p, j);s = data['checkpoint']
     if data['content_hash'] != p.rows(j)['content']['hash'] or data['signature'] != signature(p, j, s):
         raise Blocked('M2_VERSION: content or requested edits changed')
@@ -764,12 +791,22 @@ def check(p, j, data):
         elif req_base: raise Blocked('M2_BASE_IMAGE: unexpected predecessor')
         if item['prompt'] != scene['prompt'] or [x['character_id'] for x in item['references']] != scene['character_ids']:
             raise Blocked('M2_PROMPT: approved prompt or character links changed')
+        if scene['id'] in reused and item != reused[scene['id']]:
+            raise Blocked('IMPORT_IMAGE_CACHE: reused image differs from source')
     if data['proofs']:
         raise Blocked('Separate proof images removed; review actual scene images')
     files = [data['contact_sheet']]
+    if reuse_info:
+        files += reuse_info['files']
     image_check(p, j, data['contact_sheet'], full=False)
     for item in data['references'] + data['items'] + data['proofs']:
         files.append(image_check(p, j, item['path'], item['sha256']))
+        if reuse_info and (item in data['references'] or
+                           item.get('image_id', item['scene_id']) + '_' +
+                           item.get('ratio', '').replace(':', 'x') in reused):
+            continue  # Original journals remain source evidence inside the receipt.
+        if reuse_info and item['request'].startswith('imports/'):
+            raise Blocked('IMPORT_IMAGE_CACHE: revised image must have a new Flow request')
         req = read(p.path(j, item['request']))
         from prompt_templates import image_prompt
         changes = '\n'.join(x['note'] for x in req['identity']['edits'])

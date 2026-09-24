@@ -164,7 +164,7 @@ def _verify_metadata(p, job, paths, files, snapshot, content, audio, images, tra
             try:
                 journal = read(p.path(job, reference['registration_journal']))
                 confirmation = read(p.path(job, reference['confirmation']))
-                if images.get('import_kind') == 'source-copy':
+                if reference.get('registration_image'):
                     # Imported journals retain their original source-relative
                     # path; the importer supplies the copied destination path.
                     registered_rel = reference['registration_image']
@@ -205,13 +205,14 @@ def _verify_metadata(p, job, paths, files, snapshot, content, audio, images, tra
     for rel in paths:
         if str(p.path(job, rel)) not in review_text and str(p.path(job, rel)) != timing_file:
             raise Blocked('MACHINE_REVIEW_MEDIA: review page omits a listed asset')
-    receipt_paths = {value for value in (audio.get('import_receipt'), images.get('import_receipt'))
+    receipt_paths = {value for value in (audio.get('import_receipt'), images.get('import_receipt'),
+                                       images.get('image_reuse_receipt'))
                      if isinstance(value, str)}
     if receipt_paths != {str(Path(path).relative_to(p.job(job))) for path in extras}:
         raise Blocked('MACHINE_REVIEW_MEDIA: import receipt missing or unreferenced')
     import_verified_files = set()
     for part, payload in (('audio', audio), ('images', images)):
-        relative = payload.get('import_receipt')
+        relative = payload.get('import_receipt') or payload.get('image_reuse_receipt')
         if relative:
             # The importer also checks the source's machine_approved event,
             # decision, report, envelope snapshots and copied bytes.
@@ -225,7 +226,7 @@ def _verify_metadata(p, job, paths, files, snapshot, content, audio, images, tra
             raise Blocked('MACHINE_REVIEW_MEDIA: unknown metadata receipt')
         if (receipt.get('destination_job') != job
                 or receipt.get('brief_hash') != hashobj(p.brief(job)[0])
-                or receipt.get('content_payload_hash') != hashobj(content)
+                or (receipt.get('content_payload_hash') != hashobj(content))
                 or receipt.get('narration_hash') != hashobj([
                     (scene['id'], scene['narration'], scene.get('narration_en'))
                     for scene in content['scenes']])):

@@ -79,9 +79,12 @@ Khi mã được bảo vệ đã đổi, tạo job v3 mới bằng brief tương
 python3 pilot.py import-media NEW_JOB --from SOURCE_JOB
 python3 pilot.py import-media NEW_JOB --from SOURCE_JOB --part audio
 python3 pilot.py import-media NEW_JOB --from SOURCE_JOB --part images
+python3 pilot.py import-media NEW_JOB --from SOURCE_JOB --part image-cache
 ```
 
-Lệnh mặc định nhập cả audio và images. `--part audio` cho phép content mới thay kế hoạch ảnh nếu brief và mọi câu narration Việt/Anh giữ nguyên; ảnh của job mới sau đó vẫn phải được sản xuất qua `run NEW_JOB media`. Nhập images đòi toàn bộ content payload giống nguồn, gồm hình, neo và kế hoạch nhịp. Chưa hỗ trợ tái sử dụng từng ảnh khi kế hoạch hình đã thay đổi; chọn audio-only rồi sản xuất ảnh mới nếu cần sửa kế hoạch.
+Lệnh mặc định nhập cả audio và images. `--part audio` cho phép content mới thay kế hoạch ảnh nếu brief và mọi câu narration Việt/Anh giữ nguyên; ảnh của job mới sau đó vẫn phải được sản xuất qua `run NEW_JOB media`. Nhập `--part images` đòi toàn bộ content payload giống nguồn, gồm hình, neo và kế hoạch nhịp.
+
+`--part image-cache` dành cho content mới chỉ sửa trường `images` trong các cảnh, còn brief, nhân vật, lời dẫn, nhịp và mọi trường khác giữ nguyên. Lệnh lưu nguyên byte bằng chứng Flow nguồn, nhập checkpoint ảnh tham chiếu, rồi chọn **toàn cảnh không đổi** để dùng lại ảnh. Nếu một ảnh trong cảnh thay đổi, toàn bộ ảnh cảnh đó được tạo mới khi chạy `run NEW_JOB media`; mọi chuỗi `based_on` được giữ trong cùng cảnh. Bộ chọn đối chiếu prompt thực gửi, tham chiếu, model, tỷ lệ, ID và hash ảnh nền; thiếu hoặc sai bằng chứng thì dừng. Ảnh mới vẫn cần Flow ở cùng profile chứa media ID tham chiếu nguồn. Receipt được kiểm lại ở revision ảnh và cổng duyệt media; quyết định chất lượng media không được nhập. Khi reject một cảnh đã dùng lại, lượt tiếp theo tạo ảnh mới cho cảnh đó thay vì dùng lại bản nguồn.
 
 Nguồn phải có content được duyệt tự động, audio/images được chấp nhận kỹ thuật, toàn bộ request ảnh ở trạng thái downloaded, nhật ký Flow/đăng ký/base/UI proof đầy đủ và không có request cùng mục tiêu còn ambiguous. Công cụ kiểm tra hash mọi artifact, sao chép nguyên byte vào `runs/NEW_JOB/imports/` và ghi receipt. Revision audio/images của job mới dùng input_versions mới và các file được sao chép; không chép quyết định media/video, không gửi yêu cầu Flow, không gọi TTS. Sau khi có đủ audio và images, media review mới được tạo và phải được máy xem/nghe lại trước khi video chạy. Receipt được đưa vào media manifest để người đánh giá thấy nguồn gốc.
 

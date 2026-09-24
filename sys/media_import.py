@@ -34,6 +34,94 @@ def _narration(content):
     return [(s['id'], s['narration'], s.get('narration_en')) for s in content['scenes']]
 
 
+def _same_except_scene_images(source, destination):
+    """Only a revised drawing plan may differ; narration and scene meaning stay fixed."""
+    left, right = copy.deepcopy(source), copy.deepcopy(destination)
+    if len(left.get('scenes', [])) != len(right.get('scenes', [])):
+        return False
+    for old, new in zip(left['scenes'], right['scenes']):
+        old.pop('images', None)
+        new.pop('images', None)
+    return left == right
+
+
+def _reusable_targets(p, job, source_job, source_content, source_images, *, archive_job=None,
+                      receipt=None, honor_edits=True):
+    """Reuse complete unchanged scenes, never a changed prompt or base chain."""
+    import image_pipeline
+    destination = p.payload(job, 'content')
+    if source_content.get('schema_version') != '3.0':
+        raise Blocked('IMPORT_IMAGE_CACHE: v3 image plans required')
+    if not _same_except_scene_images(source_content, destination):
+        raise Blocked('IMPORT_IMAGE_CACHE: only scene image plans may differ')
+    brief = p.brief(job)[0]
+    source_units = image_pipeline.planned_units_from_content(source_content, brief)
+    destination_units = image_pipeline.planned_units(p, job)
+    if [x['id'] for x in source_units] != [x['id'] for x in destination_units]:
+        raise Blocked('IMPORT_IMAGE_CACHE: image IDs or ratios changed')
+    source_by_id = {unit['id']: unit for unit in source_units}
+    destination_by_id = {unit['id']: unit for unit in destination_units}
+    items = {item.get('image_id', item['scene_id']) + '_' +
+             item.get('ratio', '').replace(':', 'x'): item for item in source_images['items']}
+    if set(items) != set(source_by_id):
+        raise Blocked('IMPORT_IMAGE_CACHE: source image coverage differs')
+    old_scenes = {scene['id']: scene for scene in source_content['scenes']}
+    new_scenes = {scene['id']: scene for scene in destination['scenes']}
+    if ([ref['character_id'] for ref in source_images['references']] !=
+            [character['id'] for character in destination['characters']]):
+        raise Blocked('IMPORT_IMAGE_CACHE: reference characters changed')
+    for character, ref in zip(destination['characters'], source_images['references']):
+        if (ref['prompt'] != image_pipeline.reference_prompt(destination, character)
+                or image_pipeline.edits(p, job, 'ref:' + character['id'])):
+            raise Blocked('IMPORT_IMAGE_CACHE: reference prompt changed')
+        request_path = (_mapped(receipt, ref['request']) if archive_job else ref['request'])
+        request = read(p.path(archive_job or source_job, request_path))
+        ratio = '16:9' if brief['aspect_ratio'] == '16:9' else '9:16'
+        expected = image_pipeline.requested_prompt(p, job, 'ref:' + character['id'],
+                                                    ref['prompt'], '', ratio)
+        if (request.get('state') != 'downloaded' or request.get('sha256') != ref['sha256']
+                or request.get('identity', {}).get('actual_prompt') != expected
+                or ref['actual_prompt'] != expected):
+            raise Blocked('IMPORT_IMAGE_CACHE: reference request changed')
+    reused = []
+    for scene_id, old in old_scenes.items():
+        new = new_scenes.get(scene_id)
+        if (new is None or old.get('images') != new.get('images')
+                or (honor_edits and image_pipeline.edits(p, job, scene_id))):
+            continue
+        candidates = [unit for unit in source_units if unit['scene_id'] == scene_id]
+        for unit in candidates:
+            if unit != destination_by_id[unit['id']]:
+                raise Blocked('IMPORT_IMAGE_CACHE: unchanged scene produced a different prompt')
+            item = items[unit['id']]
+            request_path = (_mapped(receipt, item['request']) if archive_job else item['request'])
+            request = read(p.path(archive_job or source_job, request_path))
+            identity = request.get('identity', {})
+            actual = image_pipeline.requested_prompt(p, job, unit['id'], unit['prompt'], '',
+                                                       unit['ratio'])
+            if (request.get('state') != 'downloaded' or request.get('sha256') != item['sha256']
+                    or identity.get('target') != unit['id'] or identity.get('prompt') != unit['prompt']
+                    or identity.get('actual_prompt') != actual or item['actual_prompt'] != actual
+                    or identity.get('ratio') != unit['ratio'] or identity.get('model') !=
+                    read(p.root / 'config.json')['flow_model'] or identity.get('edits')
+                    or identity.get('references') != item['references']
+                    or [ref['character_id'] for ref in item['references']] != unit['character_ids']):
+                raise Blocked('IMPORT_IMAGE_CACHE: source prompt/reference changed: ' + unit['id'])
+            base = identity.get('base_image')
+            if unit.get('based_on'):
+                prior = items.get(unit['based_on'])
+                if (not prior or not base or base.get('target') != unit['based_on']
+                        or base.get('sha256') != prior['sha256']
+                        or source_by_id[unit['based_on']]['scene_id'] != scene_id):
+                    raise Blocked('IMPORT_IMAGE_CACHE: source base chain changed: ' + unit['id'])
+            elif base:
+                raise Blocked('IMPORT_IMAGE_CACHE: unexpected source base: ' + unit['id'])
+            reused.append(unit['id'])
+    if not reused or len(reused) == len(destination_units):
+        raise Blocked('IMPORT_IMAGE_CACHE: expected both reused and revised scene images')
+    return reused
+
+
 def _envelope(p, source, module, row):
     if row['state'] != 'approved' or not row['envelope']:
         raise Blocked(f'IMPORT_SOURCE: {module} must have a technical acceptance')
@@ -214,6 +302,72 @@ def _map_images(p, source, source_payload, receipt, receipt_path, content_hash, 
     return result
 
 
+def reused_images(p, job, relative):
+    """Return exact source-derived items for a selective final revision."""
+    import image_pipeline
+    info = verify_receipt(p, job, relative, 'images')
+    receipt = info['receipt']
+    if receipt.get('reuse_kind') != 'selective-scenes-v1':
+        raise Blocked('IMPORT_IMAGE_CACHE: selective receipt required')
+    source = read(p.path(job, _mapped(receipt,
+        receipt['source_envelopes']['images_final']['path'])))['payload']
+    mapped = _map_images(p, receipt['source_job'], source, receipt, relative,
+                         p.rows(job)['content']['hash'], image_pipeline.signature(p, job, 'final'),
+                         archive_job=job)
+    units = image_pipeline.planned_units(p, job)
+    ids = [unit['id'] for unit in units]
+    source_items = {item['image_id'] + '_' + item['ratio'].replace(':', 'x'): item
+                    for item in mapped['items']}
+    if len(source_items) != len(mapped['items']) or set(source_items) != set(ids):
+        raise Blocked('IMPORT_IMAGE_CACHE: mapped source images differ')
+    edited = {unit['id'] for unit in units
+              if image_pipeline.edits(p, job, unit['scene_id'])}
+    selected = {target: source_items[target] for target in receipt['reused_targets']
+                if target not in edited}
+    references = image_pipeline.approved(p, job, 'references')
+    if (not references or references['payload'].get('import_receipt') != relative
+            or references['payload']['references'] != mapped['references']):
+        raise Blocked('IMPORT_IMAGE_CACHE: imported reference checkpoint differs')
+    return selected, mapped['references'], info
+
+
+def selected_image_reuse(p, job):
+    marker = p.job(job) / 'imports/image-reuse.json'
+    if not marker.is_file():
+        return None
+    selection = read(marker)
+    relative = selection.get('receipt')
+    if (not isinstance(relative, str) or not relative.startswith('imports/')
+            or digest(p.path(job, relative)) != selection.get('sha256')):
+        raise Blocked('IMPORT_IMAGE_CACHE: selection marker changed')
+    selected, references, info = reused_images(p, job, relative)
+    return relative, selected, references, info
+
+
+def imported_reference_media_id(p, job, ref):
+    """Read the original Flow ID from its archived sidecar, never invent one."""
+    import image_pipeline
+    approved = image_pipeline.approved(p, job, 'references')
+    if not approved or not approved['payload'].get('import_receipt'):
+        return None
+    relative = approved['payload']['import_receipt']
+    info = verify_receipt(p, job, relative, 'images')
+    receipt = info['receipt']
+    prefix = receipt['prefix'] + '/source/'
+    if not ref['request'].startswith(prefix):
+        return None
+    journal = read(p.path(job, ref['request']))
+    args = journal.get('args', [])
+    cfg = read(p.root / 'config.json')
+    if ('--profile' not in args or args[args.index('--profile') + 1] != cfg['flow_profile']):
+        raise Blocked('IMPORT_IMAGE_CACHE: source reference is on another Flow profile')
+    source_path = _mapped(receipt, journal['path'])
+    sidecar = str(PurePosixPath(source_path).with_suffix('.json'))
+    if sidecar not in receipt['files']:
+        raise Blocked('IMPORT_IMAGE_CACHE: reference Flow sidecar missing')
+    return read(p.path(job, sidecar)).get('forgeId')
+
+
 def verify_receipt(p, job, relative, part):
     """Verify every copied source byte and source envelope without source writes."""
     receipt = read(p.path(job, relative))
@@ -276,8 +430,17 @@ def verify_receipt(p, job, relative, part):
         raise Blocked('IMPORT_RECEIPT: destination brief differs')
     if part == 'audio' and receipt['narration_hash'] != hashobj(_narration(content)):
         raise Blocked('IMPORT_RECEIPT: narration differs')
-    if part == 'images' and receipt['content_payload_hash'] != hashobj(content):
-        raise Blocked('IMPORT_RECEIPT: image plan differs')
+    if part == 'images':
+        if receipt.get('reuse_kind') == 'selective-scenes-v1':
+            source_payload = source_content['payload']
+            final = read(p.path(job, _mapped(receipt,
+                receipt['source_envelopes']['images_final']['path'])))['payload']
+            expected = _reusable_targets(p, job, receipt['source_job'], source_payload, final,
+                                         archive_job=job, receipt=receipt, honor_edits=False)
+            if receipt.get('reused_targets') != expected or receipt.get('content_payload_hash') != hashobj(content):
+                raise Blocked('IMPORT_RECEIPT: selective image plan changed')
+        elif receipt['content_payload_hash'] != hashobj(content):
+            raise Blocked('IMPORT_RECEIPT: image plan differs')
     return {'receipt': receipt, 'files': files}
 
 
@@ -297,6 +460,13 @@ def check_imported_images(p, job, payload):
     info = verify_receipt(p, job, payload['import_receipt'], 'images')
     receipt = info['receipt']
     stage = payload['checkpoint']
+    if receipt.get('reuse_kind') and stage != 'references':
+        raise Blocked('IMPORT_IMAGES: selective receipt may import references only')
+    if stage == 'final':
+        source_content = read(p.path(job, _mapped(receipt,
+            receipt['source_envelopes']['content']['path'])))['payload']
+        if source_content != p.payload(job, 'content'):
+            raise Blocked('IMPORT_IMAGES: full image import requires identical content')
     key = 'images_' + stage
     if key not in receipt['source_envelopes']:
         raise Blocked('IMPORT_IMAGES: source checkpoint missing')
@@ -347,13 +517,14 @@ def import_media(p, job, source, part='all'):
     """Create fresh technical revisions, never a source quality decision."""
     import workflow
     import image_pipeline
-    if part not in ('audio', 'images', 'all') or job == source:
-        raise Blocked('IMPORT_MEDIA: choose audio, images, or all from another job')
+    if part not in ('audio', 'images', 'all', 'image-cache') or job == source:
+        raise Blocked('IMPORT_MEDIA: choose audio, images, image-cache, or all from another job')
+    selective = part == 'image-cache'
     p.refresh(job)
     destination_mode = workflow.settings(p, job)['mode']
     if destination_mode != 'auto' or not workflow.approved(p, job, 'content'):
         raise Blocked('IMPORT_MEDIA: destination content needs a fresh auto decision')
-    selected = ['audio', 'images'] if part == 'all' else [part]
+    selected = ['audio', 'images'] if part == 'all' else ['images'] if selective else [part]
     rows = p.rows(job)
     if any(rows[module]['state'] != 'pending' or rows[module]['revision'] != 0 for module in selected):
         raise Blocked('IMPORT_MEDIA: selected destination modules must be untouched')
@@ -365,9 +536,11 @@ def import_media(p, job, source, part='all'):
     destination_content = p.payload(job, 'content')
     if 'audio' in selected and _narration(source_content) != _narration(destination_content):
         raise Blocked('IMPORT_MEDIA: narration differs')
-    if 'images' in selected and source_content != destination_content:
+    if 'images' in selected and not selective and source_content != destination_content:
         raise Blocked('IMPORT_MEDIA: image plans differ; import audio only or regenerate images')
     envelopes, audited_files = _audit_source(p, source, selected)
+    reused = (_reusable_targets(p, job, source, source_content,
+               envelopes['images_final'][2]['payload']) if selective else None)
     attestation = _source_decision(p, source)
     paths = _source_files(p, source, envelopes, audited_files)
     prefix = f'imports/{source}/{part}-{time.time_ns()}'
@@ -382,6 +555,9 @@ def import_media(p, job, source, part='all'):
                'source_envelopes': {name: {'path': rel, 'hash': stamp}
                                     for name, (rel, stamp, _) in envelopes.items()},
                'files': {}}
+    if selective:
+        receipt['reuse_kind'] = 'selective-scenes-v1'
+        receipt['reused_targets'] = reused
     for rel in paths:
         mapped = _mapped(receipt, rel)
         source_path = p.path(source, rel)
@@ -396,6 +572,19 @@ def import_media(p, job, source, part='all'):
         receipt['files'][mapped] = source_hash
     write(p.path(job, receipt_path), receipt)
     verify_receipt(p, job, receipt_path, selected[0])
+    if selective:
+        source_refs = envelopes['images_references'][2]['payload']
+        def imported_references(out):
+            return _map_images(p, source, source_refs, receipt, receipt_path,
+                               p.rows(job)['content']['hash'], image_pipeline.signature(p, job, 'references'))
+        p.run(job, 'images', producer=ImportProducer(receipt_path, 'images', imported_references))
+        workflow.accept_module(p, job, 'images')
+        write(p.job(job) / 'imports/image-reuse.json',
+              {'receipt': receipt_path, 'sha256': digest(p.path(job, receipt_path))})
+        result = workflow.status(p, job)
+        result.update(import_receipt=str(p.path(job, receipt_path)), reused_images=len(reused),
+                      generated_images=len(image_pipeline.planned_units(p, job)) - len(reused))
+        return result
     if 'audio' in selected:
         source_audio = envelopes['audio'][2]['payload']
         p.run(job, 'audio', producer=ImportProducer(receipt_path, 'audio',

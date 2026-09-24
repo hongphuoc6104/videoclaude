@@ -393,7 +393,7 @@ def main():
  ap.add_argument('--revision',type=int);ap.add_argument('--note',default='')
  for name in ['evidence','scene','asset','character','request','brief','queue']:
   ap.add_argument('--'+name)
- ap.add_argument('--part',choices=['audio','images','all'])
+ ap.add_argument('--part',choices=['audio','images','all','image-cache'])
  ap.add_argument('--from',dest='source_job')
  a=ap.parse_args()
  with locked(ROOT):

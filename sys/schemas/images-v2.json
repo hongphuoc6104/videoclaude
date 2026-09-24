@@ -1,6 +1,10 @@
 {
   "type": "object",
   "properties": {
+    "image_reuse_receipt": {
+      "type": "string",
+      "minLength": 1
+    },
     "import_receipt": {
       "type": "string",
       "minLength": 1

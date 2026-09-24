@@ -158,6 +158,8 @@ def assets(p, job, stage):
         for imported in (audio, images):
             if imported.get('import_receipt'):
                 files.append(imported['import_receipt'])
+        if images.get('image_reuse_receipt'):
+            files.append(images['image_reuse_receipt'])
     if stage == 'video':
         media = current(p,job,'media')
         if media:
@@ -443,7 +445,7 @@ def retake_audio(p, job, note, scene=None):
 
 def reject(p, job, stage, revision, note, part=None, scene=None, character=None):
     if part not in (None, 'audio') or (stage != 'media' and part):
-        raise Blocked('--part images/all chỉ dùng cho import-media')
+        raise Blocked('--part images/all/image-cache chỉ dùng cho import-media')
     p.refresh(job)
     data = current(p, job, stage)
     if not data or data['revision'] != revision or not note.strip():
