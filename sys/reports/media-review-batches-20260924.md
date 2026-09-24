@@ -1,22 +1,20 @@
 # Duyệt media tự động theo lô — 24/09/2026
 
-## Thay đổi
+## Thiết kế hiện tại
 
-- `machine_review.review()` chia media thành các lô văn bản ngắn, một lô ảnh tham chiếu/phụ, rồi các lô hai cảnh. Mỗi lô cảnh yêu cầu kiểm tra đủ tám tiêu chí media, từng ảnh, ảnh tham chiếu và ảnh ranh giới cảnh trước.
-- JSON/SRT dài được tách thành các mảnh UTF-8 tối đa 2.500 byte và 100 dòng, tối đa năm mảnh mỗi lượt. Mảnh ghép lại đúng từng byte của tệp gốc; dấu vết `view_file` phải cho thấy đã trả **toàn bộ dòng** và không có cờ cắt ngắn. Báo cáo cuối chỉ tính tệp gốc là đã xem khi tất cả mảnh đều đạt. Các lô đã đạt chỉ được dùng lại khi transcript AGY vẫn tồn tại và hash không đổi.
-- WAV gốc được cắt theo ranh giới cảnh bằng khung PCM nguyên vẹn. Mỗi lô phải nghe toàn bộ clip; trước khi báo đạt, bộ điều phối xác minh các clip nối kín toàn bộ khung WAV ở từng ngôn ngữ.
-- Mỗi lô lưu request, response, quan sát có cấu trúc theo loại tệp, quyết định và dấu vết `view_file` của AGY. Lô đạt được dùng lại khi tiếp tục; lô có lỗi chất lượng thật giữ `rejected.json` và buộc tạo media revision mới. Lỗi công cụ/thiếu khả năng nghe chỉ dừng duyệt, có thể thử lại sau khi sửa công cụ.
-- Báo cáo cuối chỉ được tạo nếu mọi tệp trong manifest được phân và xem, mọi tiêu chí đều pass, ảnh/WAV không đổi và dấu vết AGY xác nhận từng `view_file` thành công. Báo cáo nhúng kết quả các lô để dấu duyệt gắn với bằng chứng đã chốt. Không đổi ba cổng công khai, revision hoặc review cũ.
+- Bộ duyệt dùng **một lô ảnh tham chiếu và các lô hai cảnh**. H001f có 20 cảnh nên cần 11 lượt AGY. Mỗi lô cảnh xem toàn bộ JPG của hai cảnh, các ảnh tham chiếu và ảnh cuối của lô trước; nghe clip WAV cắt đúng khung PCM từ bản master. Tám tiêu chí media đều phải đạt, với quan sát cụ thể cho từng ảnh và từng cảnh trong clip.
+- Python đọc và hash **toàn bộ byte** của các JSON/SRT gốc. Nó đối chiếu payload trong ba envelope với job hiện tại, dấu nguồn content, ảnh và lời nhắc đã lập kế hoạch, mọi ID/tỷ lệ ảnh, WAV/segment, SRT tạo chính xác từ câu và thời gian, nhịp hình tính lại từ lời dẫn/ảnh/âm thanh, cùng manifest và trang review. Receipt nhập media (nếu có) được đối chiếu hash bản sao và nguồn. Dữ liệu cảnh cần đánh giá được đưa trực tiếp vào từng request AGY: lời dẫn, hình, nhịp, cue phụ đề, coverage, outline, yêu cầu brief và nhân vật. Không ghi rằng AGY đã đọc metadata gốc.
+- Dấu vết transcript AGY phải chứng minh từng `view_file` của JPG và clip WAV trả media đúng loại. Thiếu khả năng nhìn/nghe, thiếu tệp, thiếu quan sát hoặc tiêu chí không pass đều chặn duyệt.
+- Lô đạt được lưu theo hash nội dung riêng, gồm cảnh, brief, ảnh, ảnh tham chiếu, ảnh ranh giới, dữ liệu nhịp/phụ đề và PCM của clip. Khi manifest mới chỉ đổi một ảnh, các lô không bị ảnh hưởng được dùng lại sau khi kiểm tra lại hash tệp cũ, tệp hiện tại và transcript AGY. Báo cáo cuối vẫn gắn với hash **toàn bộ manifest hiện tại**; liệt kê riêng `deterministically_verified_files`, `agy_viewed_files`, ánh xạ ảnh hiện tại ↔ ảnh đã xem và phạm vi WAV gốc được nghe qua clip.
 
 ## Kiểm tra
 
-- Manifest thật H001f: 96 tệp → 88 lô (77 lô văn bản, 1 lô ảnh tham chiếu/bản sao, 10 lô cảnh). Mười clip nối kín **877,434645833 giây**, đúng số khung WAV gốc. Đây chỉ là lập kế hoạch đọc, không chạy duyệt H001f.
-- `python3 -m unittest tests.test_machine_review_batches -q`: 15 kiểm thử đạt, gồm tiếp tục giữa chừng, thiếu tệp/quan sát, lời quan sát chung chung, lỗi chất lượng, âm thanh unsupported, sửa WAV, đổi manifest, hai ngôn ngữ, văn bản UTF-8 dài, phản hồi bị cắt ngắn, transcript bị sửa/xóa và thiếu ID ảnh dự kiến.
-- `python3 -m unittest tests.test_workflow -q`: 27 kiểm thử quy trình đạt.
+- Manifest H001f thật, chỉ đọc: **96 tệp → 11 lô** (1 tham chiếu, 10 cặp cảnh); các clip nối kín **877,434645833 giây**.
+- `python3 -m unittest tests.test_machine_review_batches -q`: 13 kiểm thử đạt, gồm manifest giả lập đủ 96 tệp, thiếu cue SRT, sửa payload metadata dù cập nhật manifest, thiếu dữ liệu inline, thiếu ảnh đã xem, thông tin quan sát chung chung, transcript cache đổi, và chỉ chạy lại lô bị ảnh hưởng khi một ảnh hoặc ảnh ranh giới đổi.
+- `python3 -m unittest tests.test_workflow -q`: 27 kiểm thử quy trình đạt trước bản chỉnh cuối; cần chạy lại sau tích hợp.
+- Thử AGY thật trước đó trên mảnh SRT tạm cho thấy transcript văn bản dài có thể bị cắt ngắn. Thiết kế hiện tại không yêu cầu AGY xem JSON/SRT gốc; dữ liệu đó được đọc và đối chiếu bằng Python. Chưa chạy AGY thật trên lô ảnh/WAV của job mới.
 
 ## Giới hạn
 
-- Thử AGY thật đúng một mảnh SRT tạm (9.680 byte, 601 dòng) trả JSON hợp lệ sau 17,7 giây và tự nhận pass. Nhưng transcript `view_file` có `truncated_fields=['content']`; bộ duyệt đã **chặn**, không chấp nhận tự nhận đã xem đủ. Bằng chứng thử ở `sys/scratch/media-review-text-smoke-da39935f99/`. Rà 629 phản hồi lịch sử cho thấy cờ cắt ngắn xuất hiện gần mức 4 KB của trường log; kích thước mảnh mới dựa trên ngưỡng thấp hơn đó nhưng chưa được thử AGY lần hai.
-- Việc xem đủ văn bản bằng mảnh nhỏ làm tăng lượt AGY. Chưa đo thời gian của toàn bộ 88 lô; chạy thực có thể mất lâu. Không nới kiểm tra để giảm thời gian nếu chưa có bằng chứng truy xuất đầy đủ hơn.
-- Chưa chạy AGY thật trên job media mới. Dấu vết `view_file` xác nhận công cụ đã mở tệp và trả ảnh/âm thanh; nó không tự chứng minh khả năng cảm nhận/chất lượng phán đoán của mô hình. Vì vậy kết quả máy vẫn cần quan sát cụ thể từng tệp và tám tiêu chí; thiếu dấu vết hoặc lời đáp không hợp lệ thì dừng.
-- Đường dẫn transcript AGY là chi tiết nội bộ có thể thay đổi; khi không đọc được, cổng duyệt fail closed. H001f đã khóa mã cũ nên bản sửa này không được chèn vào job/revision hiện tại; cần job tương thích mới hoặc đường chuyển hợp lệ được xác minh riêng.
+- `view_file` chứng minh công cụ đã cấp ảnh/âm thanh cho AGY, không tự chứng minh chất lượng phán đoán. Quan sát từng tệp, tiêu chí bắt buộc và báo cáo duyệt vẫn là điều kiện riêng.
+- Transcript AGY là đường dẫn nội bộ; mất hoặc thay đổi transcript trước khi tổng hợp làm lô đã lưu không được dùng lại. H001f khóa mã cũ, nên chỉ dùng bản sửa với job tương thích mới hoặc đường nhập hợp lệ; không chèn quyết định vào H001f.
