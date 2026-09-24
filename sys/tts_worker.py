@@ -285,11 +285,17 @@ def run(source,out):
    if (text,retake,spd) in seen or (f.exists() and f.stat().st_size>1000):continue
    seen.add((text,retake,spd));todo.append((text,retake,spd))
   if not todo:return
-  wavs=generate([normalize_text_for_tts(t) for t,_,_ in todo])
-  for (text,retake,spd),w in zip(todo,wavs):
-   k=speed if spd is None else spd
-   if isinstance(w,np.ndarray) and abs(k-1.0)>=0.01:w=change_tempo(w,st['sr'],k)
-   st['tts'].save(w,str(cached(text,retake,spd)))
+  # Gwen's infer_batch reads one line at a time. A whole-story prefetch would
+  # otherwise keep every finished waveform in RAM until the last line, losing
+  # hours of work if a later line fails or the process is interrupted.
+  chunk_size=10 if gwen else len(todo)
+  for offset in range(0,len(todo),chunk_size):
+   chunk=todo[offset:offset+chunk_size]
+   wavs=generate([normalize_text_for_tts(t) for t,_,_ in chunk])
+   for (text,retake,spd),w in zip(chunk,wavs):
+    k=speed if spd is None else spd
+    if isinstance(w,np.ndarray) and abs(k-1.0)>=0.01:w=change_tempo(w,st['sr'],k)
+    st['tts'].save(w,str(cached(text,retake,spd)))
 
  def synth(text,retake=0,spd=None):
   """Synthesize once, cached by content hash so a crashed/rerun revision

@@ -65,6 +65,20 @@ class GwenWorkerTests(unittest.TestCase):
    vieneu=tts_worker.cache_key('Câu một.',{},'0.1.1-test',SR)
    self.assertNotIn(vieneu,[p.stem for p in (d/'cache').glob('*.wav')])
 
+ def test_long_story_keeps_completed_chunks_after_later_failure(self):
+  with fake_gwen() as Fake,tempfile.TemporaryDirectory() as d:
+   d=Path(d);cache=d/'cache';req=self.req(cache,texts=tuple(f'Câu số {i}.' for i in range(12)))
+   original=Fake.generate_voice_clone
+   def fail_after_first_chunk(self,*args,**kwargs):
+    if len(Fake.calls)==10:raise RuntimeError('injected failure after ten lines')
+    return original(self,*args,**kwargs)
+   with patch.object(Fake,'generate_voice_clone',fail_after_first_chunk):
+    with self.assertRaisesRegex(RuntimeError,'injected failure'):
+     self.synth(req,d/'rev1')
+   self.assertEqual(len(list(cache.glob('*.wav'))),10)
+   self.synth(req,d/'rev2')
+   self.assertEqual(len(Fake.calls),12,'the rerun should synthesize only the two uncached lines')
+
  def test_run_on_take_is_resampled(self):
   with fake_gwen() as Fake,tempfile.TemporaryDirectory() as d:
    Fake.takes=[30.0]
