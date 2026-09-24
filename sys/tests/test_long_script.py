@@ -17,10 +17,11 @@ class FakeAgy:
     """Plan first, then one chunk per call built from the example script; records prompts."""
 
     def __init__(self, content, break_at=None, edit=None):
-        self.content, self.break_at, self.edit, self.prompts = content, break_at, edit, []
+        self.content, self.break_at, self.edit, self.prompts, self.options = content, break_at, edit, [], []
 
     def __call__(self, prompt, schema, out, **kwargs):
         self.prompts.append(prompt)
+        self.options.append(kwargs)
         if len(self.prompts) == self.break_at:
             raise Blocked('AGY_TIMEOUT: no automatic retry; inspect the saved attempt')
         if 'outline' in schema['properties']:
@@ -54,18 +55,24 @@ class LongScriptTests(unittest.TestCase):
         with patch.object(long_script, 'chunk_size', return_value=2), patch('scripts.agy_pipeline.invoke', side_effect=agy):
             return wf.advance(self.p, self.job, 'content')
 
-    def test_short_briefs_keep_the_single_call_path(self):
+    def test_two_scene_chunks_and_short_briefs(self):
         b, _ = story()
         self.assertEqual(read(ROOT / 'config.json')['content_chunk_scenes'], 6)
-        self.assertFalse(long_script.enabled(ROOT, b))  # 6 scenes
+        self.assertEqual(long_script.chunk_size(ROOT, dict(b, video_type='horror_story')), 2)
+        self.assertEqual(long_script.chunk_timeout(dict(b, video_type='horror_story')), 300)
+        self.assertEqual(long_script.chunk_timeout(b), 180)
+        self.assertFalse(long_script.enabled(ROOT, b))  # ordinary 6-scene brief keeps its path
+        self.assertTrue(long_script.enabled(ROOT, dict(b, video_type='horror_story')))
         self.assertTrue(long_script.enabled(ROOT, dict(b, scene_count=28)))
-        self.assertEqual([len(x) for x in long_script.split(dict(b, scene_count=28), 6)], [6, 6, 6, 6, 4])
+        self.assertEqual([len(x) for x in long_script.split(dict(b, scene_count=28), 2)], [2] * 14)
 
     def test_plan_then_chunks_merge_into_the_same_script(self):
         self.start()
         agy = FakeAgy(self.content)
         self.run_content(agy)
         self.assertEqual(len(agy.prompts), 4)  # plan + three chunks of two scenes
+        self.assertEqual(agy.options[0], {})  # outline keeps the normal timeout
+        self.assertTrue(all(x == {'timeout': 180} for x in agy.options[1:]))
         self.assertEqual(read(self.p.job(self.job) / 'draft/content.json'), self.content)
         style = (self.p.root / '.agents/skills/vp-content/references/narration-style.md').read_text()
         self.assertNotIn(style, agy.prompts[0])

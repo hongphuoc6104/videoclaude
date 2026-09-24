@@ -18,8 +18,10 @@ The narration is heard, not read, in one deep male Vietnamese TTS voice at a slo
 - Every scene carries at least one concrete sensory detail beyond sight: sound, smell, temperature or touch. Describe sounds in words, with their rhythm: "tiếng gõ ba nhịp, dừng, rồi thêm một nhịp".
 - Show the edge, not the centre. Do not describe the entity in full, even at the climax. A hand, a shape behind a curtain or a voice that is almost right is enough.
 - Escalation rule: each omen is closer, more personal or harder to explain than the one before. The protagonist first explains it away, then doubts, then cannot deny it.
-- Include one false relief in the middle: a moment when everything seems explained.
+- Include one false relief in the middle: let the protagonist believe an ordinary explanation for a meaningful beat before the next omen undermines it. Do not cancel the relief in the very next sentence.
 - Plant, then pay off. At least one ordinary detail from the setup returns in the climax or the twist and changes its meaning.
+- Keep the mechanism behind the central omen uncertain until the climax. Earlier scenes may bring the sound or object closer, but must not identify its source or explain the twist before the payoff.
+- Track where the protagonist stands and which side of each object is visible. A later observation must be possible from that position, or the narration must move the protagonist first. Let the audience infer what happened to absent people; do not turn an unproven supernatural explanation into a fact.
 - Before a scare, slow down with two or three short, ordinary sentences. The scare line itself is short. The next sentence starts after a full stop, never in the same sentence.
 - End every scene except the last on a small hook: an unanswered question, an unexplained detail or an action cut off.
 
@@ -58,7 +60,7 @@ The audio step directs the voice from the text itself (`scripts/delivery.py`). T
 | Escalation | ~45% | The seed's omens, each stronger. One false relief. |
 | Climax and twist | ~20% | Short, direct scenes. The twist reframes a planted detail. |
 | Aftermath | ~10% | Consequences and one lingering detail. No over-explaining. |
-| Closing (host) | last scene | Close the story and invite comments, without explaining the mystery away or calling it fiction. Never dare the listener to try anything. |
+| Closing (host) | last scene | Close the story and invite comments about the story or its ending, without explaining the mystery away or calling it fiction. Never ask the listener to inspect an object, repeat an action from the plot or otherwise try anything in real life. |
 
 ## Mood (`Không khí (mood)` in the brief)
 

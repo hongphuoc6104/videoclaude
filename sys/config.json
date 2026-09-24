@@ -65,6 +65,9 @@
     "horror.policy:check"
   ],
   "content_chunk_scenes": 6,
+  "content_chunk_scenes_by_video_type": {
+    "horror_story": 2
+  },
   "narration_styles": {
     "horror_story": "horror/narration-style.md"
   },

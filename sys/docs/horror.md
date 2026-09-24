@@ -77,14 +77,14 @@ Giọng máy đọc mọi câu cùng tốc độ, cùng độ to, cùng khoảng
 
 ## Kịch bản dài (viết theo từng đoạn)
 
-Một lần gọi agy chỉ có tối đa 180 giây, không đủ viết 20–40 cảnh. Khi brief có nhiều cảnh hơn `config.json` → `content_chunk_scenes` (mặc định 6), `pilot.py run JOB content` tự làm theo `scripts/long_script.py`:
+Một lần thử H001 viết 6 cảnh đã chạm giới hạn CLI 180 giây trước khi trả `structured_output`; log ghi khoảng 27.493 token đầu vào, 43.452 token suy luận và phần lời đáp đã nhìn thấy tới cảnh thứ hai. Vì thế lượt viết chi tiết truyện kinh dị hiện chia tối đa 2 cảnh (`config.json` → `content_chunk_scenes_by_video_type.horror_story`) và cho phép tối đa 300 giây; lượt dàn ý vẫn dùng 180 giây. Đây là giới hạn vận hành, chưa phải bảo đảm lượt viết thật sẽ đạt. `pilot.py run JOB content` tự làm theo `scripts/long_script.py`:
 
 1. **Lượt lập kế hoạch:** dàn ý đủ mọi cảnh (mục đích cụ thể, mã ý, chuyển cảnh) và danh sách nhân vật dùng chung.
-2. **Các lượt viết cảnh:** mỗi lượt viết 6 cảnh. Mỗi lượt nhận dàn ý, danh sách nhân vật, tóm tắt các đoạn trước (`story_so_far`), lời dẫn hai cảnh liền trước, và số chữ cần viết mỗi cảnh (tính từ thời lượng và tốc độ đọc trong brief).
+2. **Các lượt viết cảnh:** mỗi lượt viết tối đa 2 cảnh. Mỗi lượt nhận dàn ý, danh sách nhân vật, tóm tắt các đoạn trước (`story_so_far`), lời dẫn hai cảnh liền trước, và số chữ cần viết mỗi cảnh (tính từ thời lượng và tốc độ đọc trong brief).
 3. **Kiểm tra từng đoạn ngay khi nhận:** đúng mã cảnh, đúng dàn ý, không thêm nhân vật, điểm neo hợp lệ, đủ câu trích cho ý bắt buộc, mã ảnh/nhịp không trùng, lời dẫn không quá ngắn (dưới 60% mục tiêu thì dừng). Đoạn hỏng thì dừng ngay, không gọi tiếp.
 4. **Ghép và kiểm tra** như bản viết một lần, rồi mới tới duyệt.
 
-Không tự thử lại. Nếu một lượt hết giờ hoặc bị chặn, chạy lại `pilot.py run JOB content`: các lượt đã xong của lần trước (cùng brief, cùng phản hồi, cùng prompt) được dùng lại, chỉ gọi phần còn thiếu. Bằng chứng từng lượt nằm trong `agent-attempts/<lần chạy>/long-script.json`.
+Không tự thử lại trong cùng lượt. Nếu một lượt hết giờ hoặc bị chặn, cần xem nguyên nhân trước khi quyết định chạy lại `pilot.py run JOB content`: các lượt đã xong của lần trước (cùng brief, cùng phản hồi, cùng prompt) được dùng lại, chỉ gọi phần còn thiếu. Thông tin chẩn đoán CLI được lưu an toàn ở `agent-attempts/<lần chạy>/agy-diagnostic-*.json`; trạng thái các đoạn đã hoàn tất ở `long-script.json`. Không lấy phản hồi chưa đầy đủ từ log làm kịch bản đã kiểm tra.
 
 ## Nhạc nền và tiếng động (chỉ CC0)
 

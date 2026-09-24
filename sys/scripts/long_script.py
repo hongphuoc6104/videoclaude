@@ -1,9 +1,9 @@
 """Long-form content-v3 generation in scene chunks.
 
-A 10-30 minute story (20-40 scenes) does not fit one agy call (180 s). For
-briefs with more scenes than config content_chunk_scenes, the orchestrator asks
+A 10-30 minute story (20-40 scenes) does not fit one agy call. For
+briefs with more scenes than the configured chunk size, the orchestrator asks
 for a plan first (full outline and the character list), then writes the script
-a few scenes per call. Each call sees the plan, the running story summary and
+a few scenes per call (two for horror stories). Each call sees the plan, the running story summary and
 the last scenes' narration. Chunks are checked as they arrive, merged into one
 content-v3 payload and validated like a single-call draft.
 
@@ -20,14 +20,22 @@ from scripts.story_plan import tracks, needs_english, validate_plan
 CHUNK_KEYS = ('scenes', 'coverage', 'claims', 'revision_response', 'open_questions')
 STATE = 'long-script.json'
 UNRESOLVED = 'No chunk of the script addressed this request.'
+HORROR_CHUNK_TIMEOUT_SECONDS = 300
 
 
-def chunk_size(root):
-    return int(read(root / 'config.json').get('content_chunk_scenes') or 0)
+def chunk_size(root, b=None):
+    config = read(root / 'config.json')
+    by_type = config.get('content_chunk_scenes_by_video_type') or {}
+    video_type = b.get('video_type') if b else None
+    return int(by_type.get(video_type, config.get('content_chunk_scenes')) or 0)
+
+
+def chunk_timeout(b):
+    return HORROR_CHUNK_TIMEOUT_SECONDS if b.get('video_type') == 'horror_story' else 180
 
 
 def enabled(root, b):
-    size = chunk_size(root)
+    size = chunk_size(root, b)
     return bool(size) and b['scene_count'] > size
 
 
@@ -211,7 +219,7 @@ def reusable(out, key):
 def generate(root, b, revision, bhash, head, style, requests, previous, previous_path, out):
     from scripts import agy_pipeline  # tests patch agy_pipeline.invoke
     import jsonschema
-    size = chunk_size(root)
+    size = chunk_size(root, b)
     key = key_of(b, bhash, requests, previous_path, head, style, size)
     old = reusable(out, key)
     state = {'key': key, 'chunk_scenes': size, 'plan': old.get('plan'), 'chunks': {}, 'reused_from': old.get('folder')}
@@ -232,7 +240,7 @@ def generate(root, b, revision, bhash, head, style, requests, previous, previous
         data = old.get('chunks', {}).get(name)
         if data is None:
             data = agy_pipeline.invoke(chunk_prompt(head, style, b, plan, ids, summaries, tail, requests, previous),
-                                       schema, out)['structured_output']
+                                       schema, out, timeout=chunk_timeout(b))['structured_output']
             write(out / f'chunk-{name}.json', data)  # raw reply, kept even when the checks below block it
             jsonschema.validate(data, schema)
         used |= check_chunk(b, plan, ids, data, used)

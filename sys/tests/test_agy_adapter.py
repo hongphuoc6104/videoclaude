@@ -42,8 +42,21 @@ class AgyAdapterTests(unittest.TestCase):
   self.assertEqual(read(attempts[0])['state'],'blocked')
  def test_protocol_rejects_success_without_structured_output(self):
   from types import SimpleNamespace
-  with patch('scripts.agy_pipeline.shutil.which',return_value='/fake/agy'),patch('scripts.agy_pipeline.Path.home',return_value=self.root),patch('scripts.agy_pipeline.subprocess.run',return_value=SimpleNamespace(returncode=0,stdout='{"status":"SUCCESS"}')):
+  with patch('scripts.agy_pipeline.shutil.which',return_value='/fake/agy'),patch('scripts.agy_pipeline.Path.home',return_value=self.root),patch('scripts.agy_pipeline.subprocess.run',return_value=SimpleNamespace(returncode=0,stdout='{"status":"SUCCESS"}',stderr='')):
    with self.assertRaisesRegex(Blocked,'missing structured_output'):invoke('x',{},self.root)
+ def test_near_timeout_records_safe_diagnostic_and_does_not_retry(self):
+  from types import SimpleNamespace
+  stdout=json.dumps({'status':'SUCCESS','response':'unfinished scene with SECRET_TOKEN'})
+  result=SimpleNamespace(returncode=0,stdout=stdout,stderr='SECRET_TOKEN')
+  with patch('scripts.agy_pipeline.shutil.which',return_value='/fake/agy'),patch('scripts.agy_pipeline.Path.home',return_value=self.root),patch('scripts.agy_pipeline.subprocess.run',return_value=result) as run,patch('scripts.agy_pipeline.time.monotonic',side_effect=[0,299]):
+   with self.assertRaisesRegex(Blocked,'AGY_TIMEOUT_INCOMPLETE'):invoke('x',{},self.root,timeout=300)
+  self.assertEqual(run.call_count,1)
+  diagnostics=list(self.root.glob('agy-diagnostic-*.json'))
+  self.assertEqual(len(diagnostics),1)
+  details=read(diagnostics[0])
+  self.assertEqual(details['reason'],'near_print_timeout_without_structured_output')
+  self.assertEqual(details['response_bytes'],len('unfinished scene with SECRET_TOKEN'.encode()))
+  self.assertNotIn('SECRET_TOKEN',diagnostics[0].read_text())
  def test_api_provider_blocked(self):
   from pilot import write
   write(self.root/'.gemini/antigravity-cli/settings.json',{'modelProvider':'gemini'})

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Antigravity account CLI adapter. Never approves modules or generates media."""
-import argparse,json,os,shutil,subprocess,sys,time,uuid
+import argparse,hashlib,json,os,shutil,subprocess,sys,time,uuid
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from pilot import Pilot,ROOT,Blocked,read,write,locked
@@ -8,6 +8,35 @@ from content_contract import validate_content
 
 # Rules for the detailed script, shared by the single call and every long-script chunk.
 DETAIL_RULES='Mỗi cảnh có nhiều images/beats khi có lý do; được tái sử dụng ảnh. based_on chỉ ảnh trước trong cùng cảnh. Mỗi nhịp neo vào nguyên văn lời dẫn và lần xuất hiện; nhịp đầu neo đầu câu đầu; riêng vi/en. visible_text là danh sách chữ duy nhất AI được vẽ; không ghi mã nhân vật/cảnh/ảnh trong mô tả nhìn thấy. Chữ tạo cùng hình. Không bịa đã đo thời lượng. claims trích phát biểu và dữ kiện nguyên văn từ nguồn. Phản hồi sửa phải có revision_response, nêu rõ unresolved; không tự nhận đã được duyệt.'
+
+def _output_bytes(value):
+ if value is None:return b''
+ return value if isinstance(value,bytes) else value.encode('utf-8',errors='replace')
+
+def _error_category(value):
+ if not isinstance(value,str):return 'unknown'
+ lower=value.lower()
+ if 'captcha' in lower:return 'captcha'
+ if any(x in lower for x in ('not logged','login','sign in','unauthorized','authentication')):return 'auth'
+ if any(x in lower for x in ('quota','rate limit')):return 'limit'
+ if 'timeout' in lower:return 'timeout'
+ return 'other'
+
+def _cli_diagnostic(workspace,reason,stdout,stderr,elapsed,timeout,returncode=None,data=None):
+ """Keep failure evidence without writing raw CLI output, prompts or credentials."""
+ raw=_output_bytes(stdout)
+ parsed=data if isinstance(data,dict) else {}
+ response=parsed.get('response')
+ details={'reason':reason,'elapsed_seconds':round(elapsed,2),'print_timeout_seconds':timeout,
+          'returncode':returncode,'stdout_bytes':len(raw),'stdout_sha256':hashlib.sha256(raw).hexdigest(),
+          'stderr_bytes':len(_output_bytes(stderr)),'json_object':isinstance(data,dict),
+          'status':parsed.get('status') if parsed.get('status') in ('SUCCESS','FAILED','ERROR') else None,
+          'error_category':_error_category(parsed.get('error')),
+          'structured_output_present':isinstance(parsed.get('structured_output'),dict),
+          'response_bytes':len(_output_bytes(response)) if isinstance(response,(str,bytes)) else 0}
+ path=Path(workspace)/f'agy-diagnostic-{uuid.uuid4().hex}.json'
+ write(path,details)
+ return path.name
 
 def invoke(prompt,schema,workspace,conversation=None,timeout=180):
  binary=shutil.which('agy')
@@ -20,12 +49,28 @@ def invoke(prompt,schema,workspace,conversation=None,timeout=180):
   raise Blocked('AGY_API_PROVIDER: switch CLI to account sign-in; paid API fallback disabled')
  env=os.environ.copy()
  for name in ['GEMINI_API_KEY','GOOGLE_API_KEY']:env.pop(name,None)
+ started=time.monotonic()
  try:r=subprocess.run(args,cwd=workspace,env=env,capture_output=True,text=True,timeout=timeout+15)
- except subprocess.TimeoutExpired as ex:raise Blocked('AGY_TIMEOUT: no automatic retry; inspect the saved attempt') from ex
+ except subprocess.TimeoutExpired as ex:
+  name=_cli_diagnostic(workspace,'process_timeout',ex.stdout,ex.stderr,time.monotonic()-started,timeout)
+  raise Blocked(f'AGY_TIMEOUT: no automatic retry; inspect {name}') from ex
+ elapsed=time.monotonic()-started
  try:data=json.loads(r.stdout)
- except ValueError as ex:raise Blocked('AGY_PROTOCOL: CLI did not return JSON; check account login with agy') from ex
- if r.returncode or data.get('status')!='SUCCESS':raise Blocked('AGY_FAILED: '+str(data.get('error',data.get('status'))))
- if not isinstance(data.get('structured_output'),dict):raise Blocked('AGY_PROTOCOL: missing structured_output')
+ except ValueError as ex:
+  name=_cli_diagnostic(workspace,'invalid_json',r.stdout,r.stderr,elapsed,timeout,r.returncode)
+  raise Blocked(f'AGY_PROTOCOL: CLI did not return JSON; inspect {name}') from ex
+ if not isinstance(data,dict):
+  name=_cli_diagnostic(workspace,'non_object_json',r.stdout,r.stderr,elapsed,timeout,r.returncode,data)
+  raise Blocked(f'AGY_PROTOCOL: CLI returned non-object JSON; inspect {name}')
+ if not isinstance(data.get('structured_output'),dict) and elapsed>=timeout-5:
+  name=_cli_diagnostic(workspace,'near_print_timeout_without_structured_output',r.stdout,r.stderr,elapsed,timeout,r.returncode,data)
+  raise Blocked(f'AGY_TIMEOUT_INCOMPLETE: CLI returned near the print timeout without structured_output; no automatic retry; inspect {name}')
+ if r.returncode or data.get('status')!='SUCCESS':
+  name=_cli_diagnostic(workspace,'cli_failed',r.stdout,r.stderr,elapsed,timeout,r.returncode,data)
+  raise Blocked(f"AGY_FAILED: CLI returned an unsuccessful status ({_error_category(data.get('error'))}); inspect {name}")
+ if not isinstance(data.get('structured_output'),dict):
+  name=_cli_diagnostic(workspace,'missing_structured_output',r.stdout,r.stderr,elapsed,timeout,r.returncode,data)
+  raise Blocked(f'AGY_PROTOCOL: missing structured_output; inspect {name}')
  return data
 
 def genre_style(root,b):
