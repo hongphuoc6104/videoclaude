@@ -43,8 +43,10 @@ export async function signInOrCaptcha(page){
 /**
  * Open the tool in another Chrome profile of the same user-data-dir and bind that tab.
  * Chrome forwards the command line to the running process, which opens a new window in the
- * profile; the tab is found by a one-time marker, then its profile path and executable are
- * checked on chrome://version exactly like the first connection. It never signs in, never
+ * profile; the tab is found by a one-time marker on the tool URL. Navigate that same tab
+ * to chrome://version to check its profile path and executable, then return to the tool.
+ * Chrome turns an externally launched chrome://version URL into a new tab on this machine.
+ * It never signs in, never
  * types anything and never closes the previous profile's tab (its tool state stays for
  * reconciliation).
  */
@@ -54,13 +56,16 @@ export async function openProfileTab({browser,dataDir,profile,executable,url,lau
   // Chrome would silently create a new, signed-out profile for an unknown directory.
   if(!exists(path.join(dataDir,profile)))throw Error(`PROFILE_NOT_FOUND: ${path.join(dataDir,profile)}`);
   const nonce=crypto.randomUUID();
-  launch(executable,[`--user-data-dir=${dataDir}`,`--profile-directory=${profile}`,`chrome://version/?vp-switch=${nonce}`]);
+  const markerUrl=new URL(url);
+  markerUrl.searchParams.set('vp-switch',nonce);
+  launch(executable,[`--user-data-dir=${dataDir}`,`--profile-directory=${profile}`,markerUrl.toString()]);
   const deadline=Date.now()+timeoutMs;let page=null;
   while(!page&&Date.now()<deadline){
     page=browser.contexts().flatMap(c=>c.pages()).find(p=>p.url().includes(nonce))||null;
     if(!page)await new Promise(resolve=>setTimeout(resolve,pollMs));
   }
   if(!page)throw Error(`PROFILE_SWITCH_TAB_NOT_FOUND: ${profile}`);
+  await page.goto('chrome://version/',{waitUntil:'domcontentloaded',timeout:30000});
   const observedProfile=(await page.locator('#profile_path').innerText()).trim();
   const observedExecutable=(await page.locator('#executable_path').innerText()).trim();
   if(path.resolve(observedProfile)!==path.join(dataDir,profile))throw Error(`PROFILE_PATH_MISMATCH: expected ${profile}, got ${observedProfile}`);

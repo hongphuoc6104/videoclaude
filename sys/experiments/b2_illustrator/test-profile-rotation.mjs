@@ -113,8 +113,8 @@ test('switching opens the profile through Chrome, verifies it on chrome://versio
  const bound=await openProfileTab({browser:fakeBrowser(pages),dataDir:'/data',profile:'Profile 102',executable:'/opt/google/chrome/google-chrome',
   url:'https://flow/102',launch,findFrame:async()=>({}),pollMs:1,exists:()=>true});
  assert.deepEqual(launched.args.slice(0,2),['--user-data-dir=/data','--profile-directory=Profile 102']);
- assert.match(launched.args[2],/^chrome:\/\/version\/\?vp-switch=/);
- assert.equal(bound.profile,'Profile 102');assert.equal(bound.toolUrl,'https://flow/102');assert.deepEqual(pages[0].visited,['https://flow/102']);
+ assert.match(launched.args[2],/^https:\/\/flow\/102\?vp-switch=/);
+ assert.equal(bound.profile,'Profile 102');assert.equal(bound.toolUrl,'https://flow/102');assert.deepEqual(pages[0].visited,['chrome://version/','https://flow/102']);
 });
 
 test('switching refuses a wrong profile, a sign-in page, a CAPTCHA and a missing tab',async()=>{
