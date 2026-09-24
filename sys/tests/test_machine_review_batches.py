@@ -1,6 +1,8 @@
 """Media review accounting and resumability; fake AGY replies are test data only."""
 import json
 import tempfile
+import sys
+import types
 import unittest
 import uuid
 import wave
@@ -18,17 +20,21 @@ class FakeJob:
         self.root, self._brief = root, brief
         self.payloads = {}
 
-    def job(self, _job):
-        return self.root
+    def job(self, job):
+        return self.root if job == 'test' else self.root / job
 
-    def path(self, _job, rel):
-        return self.root / rel
+    def path(self, job, rel):
+        return self.job(job) / rel
 
     def payload(self, _job, module):
         return self.payloads[module]
 
     def brief(self, _job):
         return self._brief, 1, 'TEST BRIEF'
+
+    def snapshot_hash(self, job, envelope):
+        return hashobj({'envelope': envelope,
+                        'files': {rel: digest(self.path(job, rel)) for rel in envelope['files']}})
 
 
 class MediaBatchReviewTests(unittest.TestCase):
@@ -321,6 +327,57 @@ class MediaBatchReviewTests(unittest.TestCase):
         self.paths.remove('revisions/images/1/SC02_I2_16x9.jpg')
         with self.assertRaisesRegex(Blocked, 'planned image ID'):
             mr._media_plan(self.p, 'test', self.paths, self.snapshot)
+
+    def test_imported_registration_uses_mapped_image_and_receipt_verifier(self):
+        images = self.p.payloads['images']
+        old_alias = self.aliases[0]
+        original_journal = 'flow/registration-1/request.json'
+        original_confirmation = 'flow/registration-1/confirmation.json'
+        copied_alias = 'imports/source/flow/registered-1.jpg'
+        copied_journal = 'imports/source/flow/registration-1/request.json'
+        copied_confirmation = 'imports/source/flow/registration-1/confirmation.json'
+        for original, copied in ((old_alias, copied_alias),
+                                 (original_journal, copied_journal),
+                                 (original_confirmation, copied_confirmation)):
+            self.put(copied, (self.root / original).read_bytes())
+        self.assertEqual(read(self.root / copied_journal)['path'], old_alias)
+        reference = images['items'][0]['references'][0]
+        reference.update(registration_journal=copied_journal,
+                         confirmation=copied_confirmation, registration_image=copied_alias)
+        self.aliases = [copied_alias]
+        images['import_kind'] = 'source-copy'
+        receipt_rel = 'imports/source/receipt.json'
+        images['import_receipt'] = receipt_rel
+        source_alias = self.p.path('source', old_alias)
+        source_alias.parent.mkdir(parents=True, exist_ok=True)
+        source_alias.write_bytes((self.root / old_alias).read_bytes())
+        source_envelope_rel = 'revisions/images/1/output.json'
+        source_envelope = {'module': 'images', 'payload': {'test': True}, 'files': [old_alias]}
+        write(self.p.path('source', source_envelope_rel), source_envelope)
+        content = self.p.payloads['content']
+        receipt = {'schema': 'vp-media-import-1', 'source_job': 'source',
+                   'destination_job': 'test', 'brief_hash': hashobj(self.brief),
+                   'content_payload_hash': hashobj(content),
+                   'narration_hash': hashobj([(scene['id'], scene['narration'],
+                                               scene.get('narration_en')) for scene in content['scenes']]),
+                   'files': {rel: digest(self.root / rel)
+                             for rel in (copied_alias, copied_journal, copied_confirmation)},
+                   'source_envelopes': {'images_final': {'path': source_envelope_rel,
+                                                          'hash': self.p.snapshot_hash('source', source_envelope)}}}
+        write(self.root / receipt_rel, receipt)
+        self.refresh_metadata()
+        self.paths.append(receipt_rel)
+        self.refresh_manifest()
+        calls = []
+        def verify(_p, _job, relative, part):
+            calls.append((relative, part))
+            return {'receipt': receipt, 'files': [relative, copied_alias,
+                                                  copied_journal, copied_confirmation]}
+        with patch.dict(sys.modules, {'media_import': types.SimpleNamespace(verify_receipt=verify)}):
+            plan, *_ = mr._media_plan(self.p, 'test', self.paths, self.snapshot)
+        self.assertEqual(calls, [(receipt_rel, 'images')])
+        self.assertIn(str(self.root / copied_alias), plan['batches'][0]['owned'])
+        self.assertEqual(len(plan['deterministically_verified_files']), 6)
 
     def test_trace_rejects_real_style_truncated_text_reply(self):
         conversation = str(uuid.uuid4())

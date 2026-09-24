@@ -164,7 +164,13 @@ def _verify_metadata(p, job, paths, files, snapshot, content, audio, images, tra
             try:
                 journal = read(p.path(job, reference['registration_journal']))
                 confirmation = read(p.path(job, reference['confirmation']))
-                registered = str(p.path(job, journal['path']))
+                if images.get('import_kind') == 'source-copy':
+                    # Imported journals retain their original source-relative
+                    # path; the importer supplies the copied destination path.
+                    registered_rel = reference['registration_image']
+                else:
+                    registered_rel = journal['path']
+                registered = str(p.path(job, registered_rel))
             except (KeyError, OSError, ValueError) as ex:
                 raise Blocked('MACHINE_REVIEW_MEDIA: registration provenance unreadable') from ex
             if (registered not in files or files[registered] != journal.get('sha256')
@@ -203,6 +209,17 @@ def _verify_metadata(p, job, paths, files, snapshot, content, audio, images, tra
                      if isinstance(value, str)}
     if receipt_paths != {str(Path(path).relative_to(p.job(job))) for path in extras}:
         raise Blocked('MACHINE_REVIEW_MEDIA: import receipt missing or unreferenced')
+    import_verified_files = set()
+    for part, payload in (('audio', audio), ('images', images)):
+        relative = payload.get('import_receipt')
+        if relative:
+            # The importer also checks the source's machine_approved event,
+            # decision, report, envelope snapshots and copied bytes.
+            from media_import import verify_receipt
+            proof = verify_receipt(p, job, relative, part)
+            if proof.get('receipt') != extras.get(str(p.path(job, relative))):
+                raise Blocked('MACHINE_REVIEW_MEDIA: importer receipt verification differs')
+            import_verified_files.update(str(p.path(job, path)) for path in proof['files'])
     for path, receipt in extras.items():
         if not isinstance(receipt, dict) or receipt.get('schema') != 'vp-media-import-1':
             raise Blocked('MACHINE_REVIEW_MEDIA: unknown metadata receipt')
@@ -236,7 +253,8 @@ def _verify_metadata(p, job, paths, files, snapshot, content, audio, images, tra
     return {'timing': timing, 'cues': cues, 'envelopes': envelopes,
             'extra_metadata': extras, 'manifest_hash': digest(manifest_path),
             'review_hash': digest(review_path),
-            'deterministically_verified_files': metadata}
+            'deterministically_verified_files': metadata,
+            'import_provenance_files': sorted(import_verified_files)}
 
 
 def _clip_signature(clip):
@@ -461,7 +479,8 @@ def _media_plan(p, job, paths, snapshot):
             'visual_timing_file': timing_files[0],
             'deterministically_verified_files': metadata,
             'metadata_provenance': {'manifest_hash': verified['manifest_hash'],
-                                    'review_hash': verified['review_hash']},
+                                    'review_hash': verified['review_hash'],
+                                    'import_provenance_files': verified['import_provenance_files']},
             'batches': batches}
     return plan, content, audio, images, tracks, verified
 
@@ -745,7 +764,8 @@ def review_media_batches(p, job, paths, snapshot):
     final_verified = _verify_metadata(p, job, paths, plan['files'], snapshot, content, audio, images,
                                       tracks, plan['deterministically_verified_files'], plan['visual_timing_file'])
     if (final_verified['manifest_hash'] != plan['metadata_provenance']['manifest_hash']
-            or final_verified['review_hash'] != plan['metadata_provenance']['review_hash']):
+            or final_verified['review_hash'] != plan['metadata_provenance']['review_hash']
+            or final_verified['import_provenance_files'] != plan['metadata_provenance']['import_provenance_files']):
         raise Blocked('REVIEW_CHANGED: metadata provenance changed during review')
     original_images = set(plan['files']) - set(plan['deterministically_verified_files']) - {track['wav'] for track in tracks}
     if {item['current'] for item in current_image_coverage} != original_images:
@@ -754,6 +774,7 @@ def review_media_batches(p, job, paths, snapshot):
               'original_manifest_files': list(plan['files']), 'files': plan['files'],
               'snapshot': snapshot,
               'deterministically_verified_files': plan['deterministically_verified_files'],
+              'import_provenance_files': plan['metadata_provenance']['import_provenance_files'],
               'agy_viewed_files': sorted(viewed),
               'current_to_viewed_images': current_image_coverage,
               'audio_coverage': [
