@@ -1,6 +1,13 @@
 {
   "type": "object",
   "properties": {
+    "import_receipt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "import_kind": {
+      "const": "source-copy"
+    },
     "voice": {
       "type": "string",
       "minLength": 1
@@ -134,5 +141,9 @@
     "duration",
     "segments"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "allOf": [
+    {"if": {"required": ["import_receipt"]}, "then": {"required": ["import_kind"]}},
+    {"if": {"required": ["import_kind"]}, "then": {"required": ["import_receipt"]}}
+  ]
 }

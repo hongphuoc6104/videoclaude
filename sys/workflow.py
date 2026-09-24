@@ -150,11 +150,14 @@ def assets(p, job, stage):
         files += [x['path'] for x in images['references'] + images['items']]
         for item in images['items']:
             for ref in item['references']:
-                files.append(read(p.path(job, ref['registration_journal']))['path'])
+                files.append(ref.get('registration_image') or read(p.path(job, ref['registration_journal']))['path'])
         audio = p.payload(job, 'audio')
         files += [audio['wav'], audio['srt']]
         if audio.get('en'):
             files.append(audio['en']['wav'])
+        for imported in (audio, images):
+            if imported.get('import_receipt'):
+                files.append(imported['import_receipt'])
     if stage == 'video':
         media = current(p,job,'media')
         if media:
@@ -180,7 +183,7 @@ def character_comparisons(p, job, images):
         if not reg:
             lines.append('Nhân vật này không được dùng trong hình nào đã lên kế hoạch; không có ảnh đăng ký để so sánh.')
             continue
-        registered_path = read(p.path(job, reg['registration_journal']))['path']
+        registered_path = reg.get('registration_image') or read(p.path(job, reg['registration_journal']))['path']
         confirmation = read(p.path(job, reg['confirmation']))
         lines += ['| Ảnh tham chiếu đã duyệt | Ảnh do Flow đăng ký |', '|---|---|',
                   f"| ![{ref['name']} — tham chiếu]({p.path(job, ref['path'])}) "
@@ -189,7 +192,7 @@ def character_comparisons(p, job, images):
             lines.append('**CHƯA SO SÁNH — cần bạn đối chiếu ngay bây giờ.** '
                           'Hệ thống chưa tự nhận hai ảnh là cùng một nhân vật.')
         if confirmation.get('matches_approved_reference') is True and confirmation.get('observer') == 'machine':
-            report = confirmation.get('report')
+            report = reg.get('registration_report') or confirmation.get('report')
             lines.append('Máy đã đánh giá và cho là khớp với tham chiếu. Báo cáo: '
                           + (str(p.path(job, report)) if report else 'không có'))
         if confirmation.get('observer') == 'technical':
@@ -439,6 +442,8 @@ def retake_audio(p, job, note, scene=None):
 
 
 def reject(p, job, stage, revision, note, part=None, scene=None, character=None):
+    if part not in (None, 'audio') or (stage != 'media' and part):
+        raise Blocked('--part images/all chỉ dùng cho import-media')
     p.refresh(job)
     data = current(p, job, stage)
     if not data or data['revision'] != revision or not note.strip():

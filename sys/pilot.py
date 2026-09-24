@@ -221,6 +221,9 @@ class Pilot:
     if abs(last-en['duration'])>.01 or not min_sec<=last<=max_sec:raise Blocked(f'English duration outside {min_sec}–{max_sec}s: revise narration_en')
     if abs(float(probe(self.path(j,en['wav']))['format']['duration'])-last)>.03:raise Blocked('Combined English audio mismatch')
     files.append(en['wav'])
+   if p.get('import_receipt'):
+    from media_import import check_imported_audio
+    files += check_imported_audio(self,j,p)
   elif m=='render':
    v=probe(self.path(j,p['video']));vs=next(s for s in v['streams'] if s['codec_type']=='video');a=next(s for s in v['streams'] if s['codec_type']=='audio')
    from fractions import Fraction
@@ -247,14 +250,24 @@ class Pilot:
   for s in files:
    if not self.path(j,s).is_file() or not self.path(j,s).stat().st_size:raise Blocked('Missing artifact: '+s)
   return files
- def run(self,j,m):
+ def run(self,j,m,producer=None):
+  if producer is not None:
+   from media_import import ImportProducer, verify_receipt
+   if m not in ('audio','images') or not isinstance(producer, ImportProducer) or producer.part!=m:
+    raise Blocked('Only a verified media import producer is accepted')
+   verify_receipt(self,j,producer.receipt_path,m)
   self.gate(j,m);r=self.rows(j)[m]
   if r['state']=='approved':raise Blocked('Approved module: reject explicitly before replacing')
   if m=='images' and self.brief(j) and r['state']=='awaiting_review':raise Blocked('M2_REVIEW: approve or reject current checkpoint first')
   rev=r['revision']+1;out=self.job(j)/'revisions'/m/str(rev);out.mkdir(parents=True,exist_ok=False)
   self.db.execute('UPDATE modules SET state=?,revision=? WHERE job=? AND module=?',('running',rev,j,m));self.db.commit();self.event(j,m,'started',str(rev))
   try:
-   if m=='control':p=read(self.root/'config.json')
+   if producer is not None:
+    p=producer(out)
+    if (p.get('import_kind')!='source-copy'
+        or p.get('import_receipt')!=producer.receipt_path):
+     raise Blocked('Imported media payload lacks the verified receipt')
+   elif m=='control':p=read(self.root/'config.json')
    elif m=='content':
     p=read(self.job(j)/'draft/content.json')
     from scripts.story_plan import check_revision
@@ -341,13 +354,14 @@ def locked(root):
 def main():
  import workflow
  ap=argparse.ArgumentParser(description='Video Pilot: content → media → video; review hoặc auto')
- ap.add_argument('command',choices=['doctor','new','status','next','run','validate','approve','reject','resume','flow-login','flow-preflight','flow-reconcile','flow-confirm-registration','check-draft','revise-brief','batch'])
+ ap.add_argument('command',choices=['doctor','new','status','next','run','validate','approve','reject','resume','flow-login','flow-preflight','flow-reconcile','flow-confirm-registration','check-draft','revise-brief','batch','import-media'])
  ap.add_argument('job',nargs='?');ap.add_argument('stage',nargs='?',choices=workflow.STAGES)
  ap.add_argument('--mode',choices=['review','auto'],default='review')
  ap.add_argument('--revision',type=int);ap.add_argument('--note',default='')
  for name in ['evidence','scene','asset','character','request','brief','queue']:
   ap.add_argument('--'+name)
- ap.add_argument('--part',choices=['audio'])
+ ap.add_argument('--part',choices=['audio','images','all'])
+ ap.add_argument('--from',dest='source_job')
  a=ap.parse_args()
  with locked(ROOT):
   p=Pilot()
@@ -368,6 +382,10 @@ def main():
     else:
      workflow.settings(p,a.job)
      if c in ('run','resume'):result=workflow.advance(p,a.job,a.stage)
+     elif c=='import-media':
+      if not a.source_job:raise Blocked('import-media requires --from SOURCE_JOB')
+      from media_import import import_media
+      result=import_media(p,a.job,a.source_job,a.part or 'all')
      elif c=='check-draft':result=p.check_draft(a.job)
      elif c=='revise-brief':
       if not a.brief:raise Blocked('--brief FILE required')

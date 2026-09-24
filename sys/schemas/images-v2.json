@@ -1,6 +1,13 @@
 {
   "type": "object",
   "properties": {
+    "import_receipt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "import_kind": {
+      "const": "source-copy"
+    },
     "schema_version": {
       "const": "2.0"
     },
@@ -64,6 +71,14 @@
                   "pattern": "^[a-f0-9]{64}$"
                 },
                 "registration_journal": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "registration_image": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "registration_report": {
                   "type": "string",
                   "minLength": 1
                 },
@@ -164,6 +179,14 @@
                   "type": "string",
                   "minLength": 1
                 },
+                "registration_image": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "registration_report": {
+                  "type": "string",
+                  "minLength": 1
+                },
                 "confirmation": {
                   "type": "string",
                   "minLength": 1
@@ -261,6 +284,14 @@
                   "type": "string",
                   "minLength": 1
                 },
+                "registration_image": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "registration_report": {
+                  "type": "string",
+                  "minLength": 1
+                },
                 "confirmation": {
                   "type": "string",
                   "minLength": 1
@@ -315,5 +346,9 @@
     "proofs",
     "contact_sheet"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "allOf": [
+    {"if": {"required": ["import_receipt"]}, "then": {"required": ["import_kind"]}},
+    {"if": {"required": ["import_kind"]}, "then": {"required": ["import_receipt"]}}
+  ]
 }

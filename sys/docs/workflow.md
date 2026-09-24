@@ -71,6 +71,22 @@ Mỗi ví dụ là một lựa chọn riêng, không chạy nối tiếp trên c
 
 Mode được giữ cố định trong job. Job trước v3 chỉ đọc lịch sử; không tự đổi baseline hoặc biến duyệt cũ thành duyệt v3. Chưa có công cụ chuyển job cũ tự động.
 
+## Nhập media đã tạo từ job auto khác
+
+Khi mã được bảo vệ đã đổi, tạo job v3 mới bằng brief tương đương và duyệt content mới theo chế độ auto trước. Với truyện kinh dị đang giữ chỗ trong kho, chưa có lệnh chuyển quyền giữ chỗ từ job cũ sang job mới: phải giải quyết việc kế nhiệm hạt giống bằng một quyết định/quy trình riêng trước khi tạo job mới. Không sửa `horror/ledger.json` hoặc giải phóng hạt giống của job còn đang sản xuất để lách chính sách. Sau khi job mới hợp lệ, có thể sao chép media đã tạo với bằng chứng thật từ một job auto khác bằng lệnh chính thức:
+
+```bash
+python3 pilot.py import-media NEW_JOB --from SOURCE_JOB
+python3 pilot.py import-media NEW_JOB --from SOURCE_JOB --part audio
+python3 pilot.py import-media NEW_JOB --from SOURCE_JOB --part images
+```
+
+Lệnh mặc định nhập cả audio và images. `--part audio` cho phép content mới thay kế hoạch ảnh nếu brief và mọi câu narration Việt/Anh giữ nguyên; ảnh của job mới sau đó vẫn phải được sản xuất qua `run NEW_JOB media`. Nhập images đòi toàn bộ content payload giống nguồn, gồm hình, neo và kế hoạch nhịp. Chưa hỗ trợ tái sử dụng từng ảnh khi kế hoạch hình đã thay đổi; chọn audio-only rồi sản xuất ảnh mới nếu cần sửa kế hoạch.
+
+Nguồn phải có content được duyệt tự động, audio/images được chấp nhận kỹ thuật, toàn bộ request ảnh ở trạng thái downloaded, nhật ký Flow/đăng ký/base/UI proof đầy đủ và không có request cùng mục tiêu còn ambiguous. Công cụ kiểm tra hash mọi artifact, sao chép nguyên byte vào `runs/NEW_JOB/imports/` và ghi receipt. Revision audio/images của job mới dùng input_versions mới và các file được sao chép; không chép quyết định media/video, không gửi yêu cầu Flow, không gọi TTS. Sau khi có đủ audio và images, media review mới được tạo và phải được máy xem/nghe lại trước khi video chạy. Receipt được đưa vào media manifest để người đánh giá thấy nguồn gốc.
+
+Nếu nguồn hoặc bản sao thay đổi, Pilot chặn bằng kiểm tra hash. Job cũ và các revision/review/journal của nó vẫn nguyên trạng. Việc sửa ảnh đã nhập sau một `reject --scene` hiện chưa có cache nhập theo từng ảnh; để tránh gửi lại hàng loạt ảnh cũ, sửa kế hoạch hình ở content của job mới rồi nhập audio-only trước khi tạo ảnh mới.
+
 ## Kho từ vựng cho kênh học từ
 
 Job dạy từ vựng lấy brief từ `vocab/bank.py` thay vì viết tay: mỗi video một nghĩa, ledger

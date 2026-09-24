@@ -569,7 +569,7 @@ def media_id_of(p, j, journal):
 
 def reference_files(p, j, refs):
     """Registered reference images for a scene, in scene order; the adapter attaches the first."""
-    return [str(p.path(j, read(p.path(j, x['registration_journal']))['path'])) for x in refs]
+    return [str(p.path(j, x.get('registration_image') or read(p.path(j, x['registration_journal']))['path'])) for x in refs]
 
 
 def reference_prompt(c, char):
@@ -729,6 +729,9 @@ def produce(p, j, out):
 
 def check(p, j, data):
     jsonschema.validate(data, read(p.root / 'schemas/images-v2.json'))
+    if data.get('import_receipt'):
+        from media_import import check_imported_images
+        return check_imported_images(p,j,data)
     c = content(p, j);s = data['checkpoint']
     if data['content_hash'] != p.rows(j)['content']['hash'] or data['signature'] != signature(p, j, s):
         raise Blocked('M2_VERSION: content or requested edits changed')
