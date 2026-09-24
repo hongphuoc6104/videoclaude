@@ -56,6 +56,29 @@ def check(root, job, brief):
         fail('Truyện kinh dị chỉ đọc tiếng Việt: chọn khung 16:9 hoặc 9:16')
 
 
+def production_owner(p, job):
+    """Block successors in-flight and an old job superseded by current code.
+
+    This runs from Pilot.refresh, never from a read-only source attestation.
+    Frozen old Pilot code cannot execute a policy added later; operators must
+    retire its service/checkout separately before handoff.
+    """
+    brief = p.brief(job)
+    seed_id = seed_of(brief[0]) if brief else None
+    if not seed_id:
+        return
+    path = p.root / 'horror/ledger.json'
+    data = json.loads(path.read_text()) if path.is_file() else {'seeds': {}}
+    record = data.get('seeds', {}).get(seed_id, {})
+    if record.get('status') not in ('reserved', 'done') or record.get('job') != job:
+        successor = record.get('job')
+        fail(f'HORROR_SEED_SUPERSEDED: {seed_id} không còn thuộc job {job}'
+             + (f'; job kế nhiệm: {successor}' if successor else ''))
+    handoff = record.get('handoff') or {}
+    if handoff.get('state') == 'creating' and getattr(p, '_handoff_nonce', None) != handoff.get('nonce'):
+        fail(f'HORROR_HANDOFF_PENDING: {seed_id} đang chuyển sang {handoff.get("to")}')
+
+
 def negated(text, start):
     """Cụm từ bị phủ định ngay trước nó ('không phải chuyện có thật', 'không máu me')."""
     before = text[max(0, start - 14):start].lower().rstrip()

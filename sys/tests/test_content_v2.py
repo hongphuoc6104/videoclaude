@@ -11,6 +11,8 @@ class ContentV2Tests(unittest.TestCase):
  def setUp(self):
   self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name)
   for n in ['schemas','.agents','renderer','tests','examples']:shutil.copytree(ROOT/n,self.root/n)
+  shutil.copytree(ROOT/'horror',self.root/'horror',
+                  ignore=shutil.ignore_patterns('ledger.json','briefs','.ledger.lock'))
   for n in ['pilot.py','workflow.py','machine_review.py','image_pipeline.py','prompt_templates.py','content_contract.py','adapters.py','config.json','AGENTS.md','GEMINI.md']:shutil.copy(ROOT/n,self.root/n)
   self.p=Pilot(self.root);self.b=read(ROOT/'examples/m1/brief.json');self.p.new('m1',self.b)
   self.p.approve('m1','control',1,'TEST ONLY control approval')

@@ -137,3 +137,9 @@ Cách bước tạo ảnh chọn ảnh tham chiếu (`image_pipeline.py`, `adapt
 | Không có ai (cảnh vắng, đồ vật) | Không có | Tạo ảnh chỉ từ chữ (`--no-character` / `noCharacter`) |
 
 Không còn đường lui về mascot: thiếu ảnh hoặc media id của nhân vật thì dừng với `CHARACTER_REFERENCE_UNRESOLVED`. Công cụ trên Flow chỉ có một ô nhân vật, nên cảnh có hai người thì gắn ảnh người đầu tiên trong `character_ids`; người thứ hai vẽ theo mô tả ngoại hình trong prompt. Hãy đặt nhân vật chính lên đầu danh sách.
+
+## Bàn giao hạt giống cho job kế nhiệm
+
+Khi một job truyện kinh dị chưa có video được duyệt nhưng cần chuyển sang phiên bản mã mới, dùng `python3 horror/bank.py continue OLD_JOB NEW_JOB`. Lệnh giữ nguyên brief và toàn bộ lựa chọn đã lưu của người dùng, tạo job mới ở chế độ cũ, ghi lineage và chuyển quyền giữ seed sau khi kiểm tra DB/file. Nó **không** chuyển content/media hoặc quyết định duyệt; job mới phải qua các cổng v3 và có thể dùng `pilot.py import-media` nếu bằng chứng nguồn đạt.
+
+Nếu lệnh báo `HANDOFF_PENDING_RECONCILE`, không chạy sản xuất ở cả job cũ lẫn mới. Dùng `python3 horror/bank.py continue-reconcile OLD_JOB NEW_JOB`; lệnh chỉ chốt hoặc hoàn tác khi DB, brief, lineage và thư mục job chứng minh được trạng thái. Trường hợp vẫn không rõ cần rà thủ công, không release seed bằng suy đoán. Mã Pilot mới chặn job cũ sau bàn giao; checkout mã frozen của job cũ không biết chính sách mới, nên phải dừng mọi tiến trình frozen trước khi chuyển thật và không dùng lại sau đó.

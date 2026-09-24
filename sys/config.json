@@ -73,5 +73,8 @@
   },
   "content_policies": [
     "horror.policy:lint"
+  ],
+  "production_policies": [
+    "horror.policy:production_owner"
   ]
 }

@@ -27,6 +27,8 @@ class MediaImportTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         for name in ['schemas', '.agents', 'renderer', 'examples', 'scripts']:
             shutil.copytree(ROOT / name, self.root / name)
+        shutil.copytree(ROOT / 'horror', self.root / 'horror',
+                        ignore=shutil.ignore_patterns('ledger.json', 'briefs', '.ledger.lock'))
         for name in ['pilot.py', 'workflow.py', 'machine_review.py', 'image_pipeline.py',
                      'media_import.py', 'content_contract.py', 'prompt_templates.py',
                      'adapters.py', 'config.json', 'AGENTS.md', 'GEMINI.md']:

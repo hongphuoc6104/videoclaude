@@ -8,6 +8,11 @@ ROOT=Path(__file__).resolve().parent
 ORDER=['control','content','audio','images','render']
 DEPS={'control':[],'content':['control'],'images':['control','content'],'audio':['control','content'],'render':['control','content','images','audio']}
 class Blocked(Exception):pass
+class GuardedConnection(sqlite3.Connection):
+ def commit(self):
+  if getattr(self,'_vp_defer_commit',False):
+   raise Blocked('Unsupported direct commit during atomic job creation')
+  return super().commit()
 def read(p):return json.loads(Path(p).read_text())
 def write(p,x):
  p=Path(p);p.parent.mkdir(parents=True,exist_ok=True);tmp=p.with_suffix(p.suffix+'.tmp');tmp.write_text(json.dumps(x,ensure_ascii=False,indent=2));tmp.replace(p)
@@ -19,13 +24,32 @@ class Pilot:
  def __init__(self,root=ROOT):
   self.root=Path(root);(self.root/'.state').mkdir(exist_ok=True)
   self._db_lock = threading.Lock()
-  self.db=sqlite3.connect(self.root/'.state/jobs.sqlite', check_same_thread=False);self.db.row_factory=sqlite3.Row
+  self.db=sqlite3.connect(self.root/'.state/jobs.sqlite', check_same_thread=False, factory=GuardedConnection);self.db.row_factory=sqlite3.Row
+  self._creation_active=False
   import image_pipeline
   image_pipeline.setup(self)
   self.db.executescript('CREATE TABLE IF NOT EXISTS modules(job TEXT,module TEXT,state TEXT,revision INTEGER,envelope TEXT,hash TEXT,PRIMARY KEY(job,module)); CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY,at REAL,job TEXT,module TEXT,event TEXT,detail TEXT); CREATE TABLE IF NOT EXISTS audio_edits(id INTEGER PRIMARY KEY,job TEXT,scene_id TEXT,note TEXT,at REAL);')
  def event(self,j,m,e,d=''):
   with self._db_lock:
-   self.db.execute('INSERT INTO events(at,job,module,event,detail) VALUES(?,?,?,?,?)',(time.time(),j,m,e,d));self.db.commit()
+   self.db.execute('INSERT INTO events(at,job,module,event,detail) VALUES(?,?,?,?,?)',(time.time(),j,m,e,d));self.commit()
+ def commit(self):
+  if not self._creation_active:self.db.commit()
+ @contextlib.contextmanager
+ def creation_transaction(self, nonce):
+  """One brief/control/workflow creation transaction; never used by run/resume."""
+  if not nonce or self._creation_active or self.db.in_transaction:
+   raise Blocked('Creation transaction already active')
+  self.db.execute('BEGIN IMMEDIATE')
+  self._creation_active=True;self.db._vp_defer_commit=True
+  try:
+   yield
+  except BaseException:
+   self._creation_active=False;self.db._vp_defer_commit=False
+   self.db.rollback()
+   raise
+  else:
+   self._creation_active=False;self.db._vp_defer_commit=False
+   self.db.commit()
  def rows(self,j):
   with self._db_lock:
    return {r['module']:dict(r) for r in self.db.execute('SELECT * FROM modules WHERE job=?',(j,))}
@@ -62,6 +86,13 @@ class Pilot:
    module,_,func=ref.partition(':')
    import importlib
    getattr(importlib.import_module(module),func or 'check')(self.root,j,brief,content)
+ def production_policies(self,j):
+  # Channel-specific ownership checks run at every production gate. Read-only
+  # source attestations deliberately do not call refresh on an old code version.
+  for ref in read(self.root/'config.json').get('production_policies',[]):
+   module,_,func=ref.partition(':')
+   import importlib
+   getattr(importlib.import_module(module),func or 'check')(self,j)
  def new(self,j,brief=None):
   if brief is not None:
    from content_contract import validate_brief
@@ -69,13 +100,15 @@ class Pilot:
   p=self.job(j)
   if p.exists():raise Blocked('Job already exists')
   p.mkdir(parents=True);write(p/'integrity.json',self.protected())
+  if getattr(self,'_handoff_nonce',None):
+   write(p/'handoff-pending.json',{'job':j,'nonce':self._handoff_nonce})
   (p/'draft').mkdir()
   if brief is None:shutil.copy(self.root/'examples/content.json',p/'draft/content.json')
   else:
    write(p/'briefs/1.json',brief)
    write(p/'brief-current.json',{'revision':1,'hash':digest(p/'briefs/1.json')})
   for m in ORDER:self.db.execute('INSERT INTO modules VALUES(?,?,?,?,?,?)',(j,m,'pending',0,'',''))
-  self.db.commit();self.event(j,'control','created');self.run(j,'control')
+  self.commit();self.event(j,'control','created');self.run(j,'control')
  def brief(self,j):
   pointer=self.job(j)/'brief-current.json'
   if not pointer.exists():return None
@@ -123,7 +156,7 @@ class Pilot:
  def snapshot_hash(self,j,e):
   return hashobj({'envelope':e,'files':{s:digest(self.path(j,s)) if self.path(j,s).is_file() else 'MISSING' for s in e['files']}})
  def refresh(self,j):
-  self.integrity(j);rows=self.rows(j)
+  self.integrity(j);self.production_policies(j);rows=self.rows(j)
   if not rows:raise Blocked('Unknown job')
   dirty=set()
   for m in ORDER:
@@ -137,7 +170,7 @@ class Pilot:
    if any(d in dirty or rows[d]['state']=='stale' for d in DEPS[m]):dirty.add(m)
    if m in dirty and r['state'] not in ('pending','stale'):
     self.db.execute('UPDATE modules SET state=? WHERE job=? AND module=?',('stale',j,m));self.event(j,m,'stale','Input or artifact changed')
-  self.db.commit()
+  self.commit()
  def gate(self,j,m):
   self.refresh(j);rows=self.rows(j)
   import workflow
@@ -260,7 +293,7 @@ class Pilot:
   if r['state']=='approved':raise Blocked('Approved module: reject explicitly before replacing')
   if m=='images' and self.brief(j) and r['state']=='awaiting_review':raise Blocked('M2_REVIEW: approve or reject current checkpoint first')
   rev=r['revision']+1;out=self.job(j)/'revisions'/m/str(rev);out.mkdir(parents=True,exist_ok=False)
-  self.db.execute('UPDATE modules SET state=?,revision=? WHERE job=? AND module=?',('running',rev,j,m));self.db.commit();self.event(j,m,'started',str(rev))
+  self.db.execute('UPDATE modules SET state=?,revision=? WHERE job=? AND module=?',('running',rev,j,m));self.commit();self.event(j,m,'started',str(rev))
   try:
    if producer is not None:
     p=producer(out)
@@ -296,9 +329,9 @@ class Pilot:
    e={'schema_version':'1.0','job_id':j,'module':m,'revision':rev,'input_versions':versions,'files':files,'payload':p,'checks':{'passed':True,'errors':[]}}
    jsonschema.validate(e,read(self.root/'schemas/envelope.json'))
    ep=out/'output.json';write(ep,e);h=self.snapshot_hash(j,e)
-   self.db.execute('UPDATE modules SET state=?,revision=?,envelope=?,hash=? WHERE job=? AND module=?',('awaiting_review',rev,str(ep.relative_to(self.job(j))),h,j,m));self.db.commit();self.event(j,m,'awaiting_review',str(rev))
+   self.db.execute('UPDATE modules SET state=?,revision=?,envelope=?,hash=? WHERE job=? AND module=?',('awaiting_review',rev,str(ep.relative_to(self.job(j))),h,j,m));self.commit();self.event(j,m,'awaiting_review',str(rev))
   except Exception as ex:
-   write(out/'failure.json',{'error':str(ex),'errors':getattr(ex,'errors',[]),'passed':False});self.db.execute('UPDATE modules SET state=?,revision=? WHERE job=? AND module=?',('blocked',rev,j,m));self.db.commit();self.event(j,m,'blocked',str(ex));raise
+   write(out/'failure.json',{'error':str(ex),'errors':getattr(ex,'errors',[]),'passed':False});self.db.execute('UPDATE modules SET state=?,revision=? WHERE job=? AND module=?',('blocked',rev,j,m));self.commit();self.event(j,m,'blocked',str(ex));raise
  def validate(self,j,m):
   self.gate(j,m);r=self.rows(j)[m]
   if r['state'] in ['stale','blocked','pending','running']:raise Blocked('Must run module to create a fresh validated revision')
@@ -311,7 +344,7 @@ class Pilot:
    return image_pipeline.approve(self,j,rev,note,checkpoint,actor)
   self.validate(j,m);r=self.rows(j)[m]
   if r['state']!='awaiting_review' or r['revision']!=rev or not note.strip():raise Blocked('Explicit approval of current awaiting revision required')
-  self.db.execute('UPDATE modules SET state=? WHERE job=? AND module=?',('approved',j,m));self.db.commit();self.event(j,m,'technical_accepted' if actor=='technical' else 'approved',json.dumps({'revision':rev,'actor':actor,'note':note},ensure_ascii=False))
+  self.db.execute('UPDATE modules SET state=? WHERE job=? AND module=?',('approved',j,m));self.commit();self.event(j,m,'technical_accepted' if actor=='technical' else 'approved',json.dumps({'revision':rev,'actor':actor,'note':note},ensure_ascii=False))
  def reject(self,j,m,note,rev=None,checkpoint=None,scene=None,character=None):
   if m=='images' and self.brief(j):
    import image_pipeline
@@ -321,13 +354,13 @@ class Pilot:
   for n in ORDER:
    if any(d in affected for d in DEPS[n]):
     affected.add(n);self.db.execute("UPDATE modules SET state='stale' WHERE job=? AND module=? AND state!='pending'",(j,n))
-  self.db.commit();self.event(j,m,'rejected',note)
+  self.commit();self.event(j,m,'rejected',note)
  def status(self,j):
   self.refresh(j);rows=self.rows(j)
   for m,r in rows.items():
    if r['state']=='running':
     self.db.execute("UPDATE modules SET state='blocked' WHERE job=? AND module=?",(j,m));self.event(j,m,'interrupted','Inspect partial output before retry')
-  self.db.commit();rows=self.rows(j)
+  self.commit();rows=self.rows(j)
   extra={}
   if self.brief(j) and rows['content']['envelope']:
    import image_pipeline

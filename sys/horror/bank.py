@@ -18,11 +18,16 @@ Dữ liệu:
   horror/ledger.json   reserved/done theo id hạt giống; chỉ ghi qua lệnh
 """
 import argparse
+import copy
 import contextlib
 import fcntl
 import json
+import os
+import secrets
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -66,6 +71,28 @@ def read_json(path, default=None):
 def write_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+
+def write_json_atomic(path, value):
+    """Replace the ledger/lineage pointer without exposing a partial JSON file."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=path.parent,
+                                     prefix='.handoff-', delete=False) as handle:
+        temporary = Path(handle.name)
+        json.dump(value, handle, ensure_ascii=False, indent=2)
+        handle.write('\n')
+        handle.flush()
+        os.fsync(handle.fileno())
+    try:
+        os.replace(temporary, path)
+        directory_fd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def stamp():
@@ -346,6 +373,8 @@ def cmd_mark(args):
     targets = [k for k, v in led['seeds'].items() if v.get('job') == args.job]
     if not targets:
         raise Stop(f'Job {args.job} chưa giữ chỗ truyện nào')
+    if any(led['seeds'][key].get('handoff', {}).get('state') == 'creating' for key in targets):
+        raise Stop('Handoff đang chờ đối chiếu; không mark seed')
     if not args.force and not approved_video(args.job):
         raise Stop(f'Job {args.job} chưa có video được duyệt; duyệt xong mới mark, hoặc --force kèm --note')
     if args.force and not args.note.strip():
@@ -358,6 +387,9 @@ def cmd_mark(args):
 
 def cmd_release(args):
     led = ledger()
+    if any(v.get('job') == args.job and v.get('handoff', {}).get('state') == 'creating'
+           for v in led['seeds'].values()):
+        raise Stop('Handoff đang chờ đối chiếu; không release seed')
     freed = [k for k, v in led['seeds'].items() if v.get('job') == args.job and v.get('status') == 'reserved']
     if not freed:
         raise Stop(f'Job {args.job} không giữ chỗ truyện nào đang chờ')
@@ -367,15 +399,259 @@ def cmd_release(args):
     return {'released': freed, 'job': args.job}
 
 
+def _video_decision_present(p, job):
+    """Any saved video decision makes reuse unsafe, even if an old code gate is unavailable."""
+    if any((REPO / 'runs' / job / 'reviews/video').glob('*/decision.json')):
+        return True
+    with p._db_lock:
+        return p.db.execute(
+            "SELECT 1 FROM events WHERE job=? AND module='video' "
+            "AND event IN ('machine_approved','user_approved') LIMIT 1", (job,)).fetchone() is not None
+
+
+def _saved_choices(record, brief, seed_id, mode):
+    """Verify five explicit user selections; never reconstruct a new brief from defaults."""
+    from horror.policy import seed_of
+    choice = record.get('choices')
+    keys = {'aspect_ratio', 'length', 'mood', 'pov', 'mode'}
+    if not isinstance(choice, dict) or set(choice) != keys or any(not choice[k] for k in keys):
+        raise Stop('Thiếu lựa chọn gốc của người dùng; không được đoán mặc định')
+    cfg = channel()
+    seed = next((x for x in seeds() if x['id'] == seed_id), None)
+    lengths = {x['value']: x for x in cfg['options']['length']['choices']}
+    povs = {x['value']: x for x in cfg['options']['pov']['choices']}
+    if (seed is None or choice['length'] not in lengths or choice['pov'] not in povs
+            or choice['mood'] not in {SEED_MOOD, *cfg['moods']}
+            or choice['aspect_ratio'] not in ('16:9', '9:16')
+            or choice['mode'] not in ('review', 'auto') or choice['mode'] != mode
+            or choice['aspect_ratio'] != brief.get('aspect_ratio')
+            or brief.get('duration') != {k: lengths[choice['length']][k]
+                                         for k in ('min_seconds', 'max_seconds')}
+            or brief.get('scene_count') != lengths[choice['length']]['scene_count']
+            or seed_of(brief) != seed_id):
+        raise Stop('Brief hiện tại không khớp lựa chọn đã lưu; không tự tạo lại')
+    requirements = brief.get('planning', {}).get('domain_requirements', [])
+    mood = seed['mood'] if choice['mood'] == SEED_MOOD else choice['mood']
+    if (not any(x.startswith(MOOD_TAG + mood + ' — ') for x in requirements)
+            or 'Ngôi kể: ' + povs[choice['pov']]['rule'] not in requirements):
+        raise Stop('Mood/ngôi kể trong brief khác lựa chọn gốc')
+    return choice
+
+
+def _source_brief(p, old, seed_id, record):
+    import workflow
+    if not p.rows(old) or not p.job(old).is_dir():
+        raise Stop('Job nguồn không tồn tại trong Pilot')
+    mode = workflow.settings(p, old)['mode']  # read-only; no integrity refresh
+    brief, revision, source_hash = p.brief(old)
+    stored = (REPO / record.get('brief', '')).resolve()
+    if (not stored.is_relative_to(BRIEFS.resolve()) or stored.name != old + '.json'
+            or not stored.is_file() or read_json(stored) != brief):
+        raise Stop('Brief nguồn không khớp bản đã giữ trong kho')
+    choices = _saved_choices(record, brief, seed_id, mode)
+    if _video_decision_present(p, old):
+        raise Stop('Job nguồn đã có quyết định video; không chuyển hạt giống')
+    return brief, revision, source_hash, choices
+
+
+def _new_db_empty(p, new):
+    if p.rows(new):
+        return False
+    for table in ('events', 'audio_edits', 'image_reviews', 'image_edits'):
+        with p._db_lock:
+            if p.db.execute(f'SELECT 1 FROM {table} WHERE job=? LIMIT 1', (new,)).fetchone():
+                return False
+    return True
+
+
+def _remove_uncommitted(p, new, nonce, brief_hash):
+    """Only a nonce-marked NEW tree with no committed DB identity may be removed."""
+    from pilot import digest
+    if not _new_db_empty(p, new):
+        return False
+    folder = p.job(new)
+    if folder.exists():
+        marker = folder / 'handoff-pending.json'
+        if (not marker.is_file() or read_json(marker) != {'job': new, 'nonce': nonce}
+                or folder.is_symlink()):
+            return False
+    brief_path = BRIEFS / f'{new}.json'
+    if brief_path.exists() and (brief_path.is_symlink() or digest(brief_path) != brief_hash):
+        return False
+    if folder.exists():
+        shutil.rmtree(folder)
+    brief_path.unlink(missing_ok=True)
+    return True
+
+
+def _valid_created_job(p, old, new, seed_id, handoff):
+    """Proof strong enough to finalize a pending handoff after a crash."""
+    import workflow
+    from pilot import hashobj, read
+    folder = p.job(new)
+    if not folder.is_dir() or folder.is_symlink():
+        return False
+    marker = folder / 'handoff-pending.json'
+    lineage_file = folder / 'lineage.json'
+    if not marker.is_file() or not lineage_file.is_file():
+        return False
+    if read(marker) != {'job': new, 'nonce': handoff['nonce']}:
+        return False
+    lineage = read(lineage_file)
+    if (hashobj(lineage) != handoff['lineage_hash'] or lineage.get('source_job') != old
+            or lineage.get('destination_job') != new or lineage.get('seed') != seed_id):
+        return False
+    try:
+        p.integrity(new)
+        if workflow.settings(p, new)['mode'] != lineage['choices']['mode']:
+            return False
+        if p.brief(new)[0] != p.brief(old)[0]:
+            return False
+        rows = p.rows(new)
+        if rows['control']['state'] != 'approved' or rows['control']['revision'] != 1:
+            return False
+        for module in ('content', 'audio', 'images', 'render'):
+            if rows[module]['state'] != 'pending' or rows[module]['revision'] != 0:
+                return False
+    except Exception:
+        return False
+    return True
+
+
+def _final_record(pending, new):
+    record = copy.deepcopy(pending)
+    handoff = record['handoff']
+    old = handoff['from']
+    record['job'] = new
+    record['at'] = stamp()
+    record['brief'] = str((BRIEFS / f'{new}.json').relative_to(REPO))
+    record['superseded_from'] = old
+    record['handoff'] = {k: handoff[k] for k in ('from', 'to', 'nonce', 'lineage_hash')}
+    record['handoff']['state'] = 'complete'
+    return record
+
+
+def cmd_continue(args):
+    """Fail-closed two-phase handoff. Caller holds ledger_lock()."""
+    from pilot import Pilot, locked, write, hashobj, digest
+    import workflow
+    old, new = args.job, args.successor
+    if not old or not new or old == new:
+        raise Stop('continue cần OLD_JOB và NEW_JOB khác nhau')
+    with locked(REPO):
+        p = Pilot(REPO)
+        try:
+            p.job(old);p.job(new)
+            led = ledger()
+            owned = [(seed, rec) for seed, rec in led['seeds'].items() if rec.get('job') == old]
+            if len(owned) != 1 or owned[0][1].get('status') != 'reserved':
+                raise Stop('OLD_JOB phải sở hữu đúng một hạt giống đang reserved, chưa done')
+            seed_id, original = owned[0]
+            if original.get('handoff', {}).get('state') == 'creating':
+                raise Stop('Handoff đang chờ; dùng continue-reconcile OLD_JOB NEW_JOB')
+            if (p.job(new).exists() or not _new_db_empty(p, new)
+                    or (BRIEFS / f'{new}.json').exists()
+                    or any(rec.get('job') == new for rec in led['seeds'].values())):
+                raise Stop('NEW_JOB đã tồn tại hoặc đang giữ hạt giống khác')
+            brief, revision, source_hash, choices = _source_brief(p, old, seed_id, original)
+            nonce = secrets.token_hex(16)
+            lineage = {'schema': 'horror-successor-1', 'source_job': old,
+                       'destination_job': new, 'seed': seed_id, 'choices': choices,
+                       'source_brief_revision': revision, 'source_brief_sha256': source_hash,
+                       'at': stamp(), 'nonce': nonce}
+            handoff = {'state': 'creating', 'from': old, 'to': new, 'nonce': nonce,
+                       'lineage_hash': hashobj(lineage), 'source_brief_sha256': source_hash,
+                       'previous_record': copy.deepcopy(original)}
+            pending = copy.deepcopy(original)
+            pending.update(job=new, handoff=handoff)
+            led['seeds'][seed_id] = pending
+            write_json_atomic(LEDGER, led)
+            brief_path = BRIEFS / f'{new}.json'
+            committed = False
+            try:
+                shutil.copyfile(p.path(old, f'briefs/{revision}.json'), brief_path)
+                if digest(brief_path) != source_hash:
+                    raise Stop('Bản brief chép sang job mới không khớp')
+                p._handoff_nonce = nonce
+                with p.creation_transaction(nonce):
+                    workflow.new(p, new, brief, choices['mode'])
+                    if p.brief(new)[0] != brief:
+                        raise Stop('Pilot đã thay đổi brief khi tạo job kế nhiệm')
+                    write(p.job(new) / 'lineage.json', lineage)
+                    if not _valid_created_job(p, old, new, seed_id, handoff):
+                        raise Stop('Job kế nhiệm chưa có control/workflow hợp lệ')
+                committed = True
+            except BaseException as exc:
+                # An interrupted SQLite commit is uncertain until inspected.
+                if _remove_uncommitted(p, new, nonce, source_hash):
+                    led['seeds'][seed_id] = original
+                    write_json_atomic(LEDGER, led)
+                    raise Stop('Đã hoàn tác handoff; tạo job mới thất bại: ' + str(exc)) from exc
+                raise Stop('HANDOFF_PENDING_RECONCILE: không chứng minh được NEW_JOB chưa tạo; '
+                           'giữ cả hai job bị khóa. Chạy continue-reconcile OLD_JOB NEW_JOB') from exc
+            finally:
+                p._handoff_nonce = None
+            if committed:
+                led['seeds'][seed_id] = _final_record(pending, new)
+                try:
+                    write_json_atomic(LEDGER, led)
+                except OSError as exc:
+                    raise Stop('HANDOFF_PENDING_RECONCILE: job mới đã tạo nhưng ledger chưa chốt; '
+                               'chạy continue-reconcile OLD_JOB NEW_JOB') from exc
+            return {'continued_from': old, 'job': new, 'seed': seed_id,
+                    'brief': str(brief_path), 'lineage': str(p.job(new) / 'lineage.json'),
+                    'pilot': workflow.status(p, new)}
+        finally:
+            p.db.close()
+
+
+def cmd_continue_reconcile(args):
+    """Resolve a durable pending record only from verifiable DB/file state."""
+    from pilot import Pilot, locked, digest
+    old, new = args.job, args.successor
+    if not old or not new:
+        raise Stop('continue-reconcile cần OLD_JOB và NEW_JOB')
+    with locked(REPO):
+        p = Pilot(REPO)
+        try:
+            led = ledger()
+            matches = [(seed, rec) for seed, rec in led['seeds'].items()
+                       if rec.get('handoff', {}).get('state') == 'creating'
+                       and rec['handoff'].get('from') == old
+                       and rec['handoff'].get('to') == new]
+            if len(matches) != 1:
+                raise Stop('Không có đúng một handoff đang chờ cho cặp job này')
+            seed_id, pending = matches[0]
+            handoff = pending['handoff']
+            if _video_decision_present(p, old):
+                raise Stop('Job nguồn đã có quyết định video trong lúc chờ; cần rà thủ công')
+            if _valid_created_job(p, old, new, seed_id, handoff):
+                led['seeds'][seed_id] = _final_record(pending, new)
+                write_json_atomic(LEDGER, led)
+                return {'reconciled': 'finalized', 'source_job': old, 'job': new, 'seed': seed_id}
+            source_hash = p.brief(old)[2]
+            if source_hash != handoff['source_brief_sha256']:
+                raise Stop('Brief nguồn đổi trong khi chờ; không tự hoàn tác')
+            if _remove_uncommitted(p, new, handoff['nonce'], source_hash):
+                led['seeds'][seed_id] = handoff['previous_record']
+                write_json_atomic(LEDGER, led)
+                return {'reconciled': 'rolled_back', 'source_job': old, 'job': new, 'seed': seed_id}
+            raise Stop('HANDOFF_PENDING: DB hoặc file NEW_JOB còn trạng thái không chắc chắn; giữ khóa, cần rà thủ công')
+        finally:
+            p.db.close()
+
+
 COMMANDS = {'status': cmd_status, 'next': cmd_next, 'show': cmd_show, 'draw': cmd_draw,
-            'start': cmd_start, 'mark': cmd_mark, 'release': cmd_release}
-WRITERS = {'draw', 'start', 'mark', 'release'}
+            'start': cmd_start, 'mark': cmd_mark, 'release': cmd_release,
+            'continue': cmd_continue, 'continue-reconcile': cmd_continue_reconcile}
+WRITERS = {'draw', 'start', 'mark', 'release', 'continue', 'continue-reconcile'}
 
 
 def parser():
     ap = argparse.ArgumentParser(description='Kho truyện kinh dị: chọn truyện và sinh brief')
     ap.add_argument('command', choices=sorted(COMMANDS))
     ap.add_argument('job', nargs='?', help='mã job của pilot (draw/start/mark/release)')
+    ap.add_argument('successor', nargs='?', help='NEW_JOB của continue/continue-reconcile')
     ap.add_argument('--ratio', help='16:9 hoặc 9:16 (bắt buộc chọn, không có mặc định)')
     ap.add_argument('--length', help='10-15, 15-20 hoặc 20-30 (phút)')
     ap.add_argument('--seed', help='mã hạt giống, hoặc auto để lấy truyện kế tiếp')
@@ -391,7 +667,7 @@ def parser():
 
 def main(argv=None):
     args = parser().parse_args(argv)
-    if args.command in ('draw', 'start', 'mark', 'release') and not args.job:
+    if args.command in ('draw', 'start', 'mark', 'release', 'continue', 'continue-reconcile') and not args.job:
         raise Stop(f'Lệnh {args.command} cần mã job')
     if args.command == 'show' and not args.seed:
         raise Stop('show cần --seed')
