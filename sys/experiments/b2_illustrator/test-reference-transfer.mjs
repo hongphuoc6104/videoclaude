@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {ReferenceTransferStore,ensureReferenceTransfer} from './reference-transfer.mjs';
-import {projectUrlFromTool,explicitMediaIds,requestContainsSource} from './flow-reference-upload.mjs';
+import {projectUrlFromTool,explicitMediaIds,requestContainsSource,responseCandidateIds} from './flow-reference-upload.mjs';
 
 const root=fs.mkdtempSync(path.join(os.tmpdir(),'vp-ref-transfer-'));
 test.after(()=>fs.rmSync(root,{recursive:true,force:true}));
@@ -91,8 +91,18 @@ test('unrelated JSON response request cannot attest an uploaded image',()=>{
  const raw={postDataBuffer:()=>Buffer.from('unrelated request')};
  const binary={postDataBuffer:()=>Buffer.concat([Buffer.from('multipart-header'),bytes,Buffer.from('multipart-tail')])};
  const encoded={postDataBuffer:()=>Buffer.from(JSON.stringify({image:bytes.toString('base64')}))};
+ const formEncoded={postDataBuffer:()=>Buffer.from(`f.req=${encodeURIComponent(JSON.stringify({image:bytes.toString('base64')}))}`)};
  assert.equal(requestContainsSource(raw,bytes),false);
  assert.equal(requestContainsSource(binary,bytes),true);
  assert.equal(requestContainsSource(encoded,bytes),true);
+ assert.equal(requestContainsSource(formEncoded,bytes),true);
  assert.equal(requestContainsSource({postDataBuffer:()=>null},bytes),false);
+});
+
+test('Flow batchexecute UUIDs are only candidates for a source-bound UI tile',()=>{
+ const body=`)]}'\n[["wrb.fr","upload","[\\"${TARGET}\\",\\"${SOURCE}\\"]",null,null,null,"generic"]]`;
+ const url='https://flow.google.com/_/AiSandboxAngularFrontend/data/batchexecute?rpcids=upload';
+ assert.deepEqual(responseCandidateIds(body,url),[TARGET,SOURCE]);
+ assert.deepEqual(responseCandidateIds(body,'https://example.com/data/batchexecute'),[]);
+ assert.deepEqual(responseCandidateIds(JSON.stringify({asset:{mediaId:TARGET},projectId:SOURCE}),url),[TARGET]);
 });

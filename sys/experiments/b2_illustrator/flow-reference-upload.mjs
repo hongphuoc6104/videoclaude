@@ -12,6 +12,7 @@ import {signInOrCaptcha} from './session.mjs';
 
 const sha256=value=>crypto.createHash('sha256').update(value).digest('hex');
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuidGlobal=/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/ig;
 const TILE='img[data-media-id]';
 
 export function projectUrlFromTool(toolUrl) {
@@ -36,7 +37,25 @@ export function requestContainsSource(request,sourceBytes) {
  const body=request.postDataBuffer?.();
  if(!body||!sourceBytes?.length)return false;
  const payload=Buffer.isBuffer(body)?body:Buffer.from(body);
- return payload.includes(sourceBytes)||payload.includes(Buffer.from(sourceBytes.toString('base64')));
+ const base64=sourceBytes.toString('base64');
+ return payload.includes(sourceBytes)||payload.includes(Buffer.from(base64))
+  // Flow's batchexecute f.req is form-encoded, so +, / and = may be escaped.
+  ||payload.includes(Buffer.from(encodeURIComponent(base64)));
+}
+
+/** Batchexecute uses positional JSON instead of mediaId keys. Generic UUIDs
+ * are candidates only; the caller must intersect them with the one new UI tile
+ * from this source-bound request before accepting an ID.
+ */
+export function responseCandidateIds(body,responseUrl) {
+ const value=Buffer.isBuffer(body)?body.toString('utf8'):String(body);
+ try {
+  const ids=[...explicitMediaIds(JSON.parse(value))];
+  if(ids.length)return ids;
+ } catch {}
+ const url=new URL(responseUrl);
+ if(url.hostname!=='flow.google.com'||!url.pathname.endsWith('/data/batchexecute'))return [];
+ return [...new Set((value.match(uuidGlobal)||[]).map(x=>x.toLowerCase()))];
 }
 
 function responseAllowed(response,sourceBytes) {
@@ -66,7 +85,7 @@ export async function uploadReferenceViaUi(bound,ref,identity,evidenceDir) {
    try {
     const body=await response.body();
     if(body.length>2_000_000)return;
-    const ids=[...explicitMediaIds(JSON.parse(body.toString('utf8')))];
+    const ids=responseCandidateIds(body,response.url());
     if(ids.length)responses.push({ids,source:new URL(response.url()).origin+new URL(response.url()).pathname,
      status:response.status(),bodySha256:sha256(body),uploadRequestSha256:sha256(response.request().postDataBuffer())});
    } catch {}
@@ -103,17 +122,17 @@ export async function uploadReferenceViaUi(bound,ref,identity,evidenceDir) {
    filename:x.closest('flow-image-tile')?.querySelector('.footer-title')?.textContent?.trim()||''}))
    .filter(x=>!prior.includes(x.mediaId)&&x.filename===sourceName),{prior,sourceName});
   if(added.length!==1)throw Error('REFERENCE_TRANSFER_UI_TILE_AMBIGUOUS');
-  const ids=[...new Set(responses.flatMap(x=>x.ids))];
-  if(ids.length!==1)throw Error('REFERENCE_TRANSFER_NETWORK_MEDIA_ID_UNVERIFIED');
-  const mediaId=ids[0],tile=added[0];
-  if(tile.mediaId!==mediaId)throw Error('REFERENCE_TRANSFER_UI_MEDIA_ID_UNVERIFIED');
+  const tile=added[0],mediaId=tile.mediaId;
+  if(!uuid.test(mediaId))throw Error('REFERENCE_TRANSFER_UI_MEDIA_ID_UNVERIFIED');
+  const matching=responses.filter(x=>x.ids.includes(mediaId.toLowerCase()));
+  if(matching.length!==1)throw Error('REFERENCE_TRANSFER_NETWORK_MEDIA_ID_UNVERIFIED');
   const tileResponse=await page.request.get(tile.src,{timeout:30000});
   if(!tileResponse.ok())throw Error('REFERENCE_TRANSFER_TILE_BYTES_UNAVAILABLE');
   const tileBytes=await tileResponse.body();
   if(!tileBytes.length)throw Error('REFERENCE_TRANSFER_TILE_BYTES_UNAVAILABLE');
   const screenshot=path.join(evidenceDir,crypto.randomUUID()+'.png');
   await fastScreenshot(page,screenshot);
-  const response=responses.find(x=>x.ids.includes(mediaId));
+  const response=matching[0];
   return {targetMediaId:mediaId,evidence:{profile:identity.profile,sourceMediaId:identity.sourceMediaId,
    sourceSha256:identity.sourceSha256,networkMediaId:mediaId,tileMediaId:mediaId,
    networkSource:response.source,networkStatus:response.status,networkBodySha256:response.bodySha256,
