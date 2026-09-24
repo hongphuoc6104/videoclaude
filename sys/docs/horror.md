@@ -35,6 +35,8 @@ Khung 16:9 đọc tiếng Việt (`audio_language: "vi"` trong brief); không c�
 
 `horror/channel.json` → `script_director` được chép vào brief khi tạo job mới. Với truyện kinh dị có bật cấu hình này, bản kịch bản đầy đủ được kiểm tra cấu trúc rồi gửi cho agy chấm độc lập theo sáu tiêu chí trong `.agents/skills/vp-script-director/SKILL.md`: leo thang nỗi sợ, nhịp câu, cao trào và chi tiết được trả, giọng kể miệng, sáo ngữ, móc cuối cảnh. Mỗi tiêu chí đạt ít nhất 1/2 và tổng đạt ít nhất 10/12; mã Python tính kết quả từ điểm và bằng chứng do agy trả về.
 
+Với truyện dài viết theo cặp cảnh, còn có **cổng dàn ý trước khi viết cảnh**. Agy đọc cả dàn ý và các điểm bắt buộc, rồi nhận xét năm điều: mở không tiết lộ cú lật, khoảng nhẹ nhõm giả có đủ nhịp ở giữa truyện, cú lật và chi tiết gieo–trả đúng hạt giống, nhân quả/ngôi kể/khẳng định có cơ sở, cảnh khép không rủ người xem làm theo. Mỗi nhận xét phải chỉ đúng mã cảnh và trích nguyên văn từ `purpose`; mã Python tính đạt/trượt, không tin cờ `pass` do agy trả về. Nếu trượt, người viết được lập lại toàn bộ dàn ý tối đa hai lượt theo yêu cầu sửa cụ thể, giữ nguyên số cảnh, mã ý bắt buộc và nhân vật. Hết lượt thì dừng `OUTLINE_DIRECTOR_NEEDS_ATTENTION` **trước khi viết cảnh đầu tiên** ở cả hai chế độ duyệt. Dàn ý và nhận xét từng lượt ở `agent-attempts/<attempt>/outline-*-round-*.json`. Dàn ý tái sử dụng từ lượt bị chặn vẫn phải qua cổng này; brief không bật `script_director` và loại video khác giữ đường đi cũ.
+
 Nếu chưa đạt, người viết nhận nhận xét cụ thể và tạo lại toàn bộ bản nháp, tối đa hai lần. Lời dẫn mới được chốt trước khi người viết đặt lại coverage, claims và anchor; đạo diễn không sửa trực tiếp lời dẫn đã neo. Mỗi vòng lưu điểm, dẫn chứng và bản người viết tại `runs/<job>/agent-attempts/<attempt>/`. Hết hai lượt mà vẫn chưa đạt: chế độ `auto` dừng với `needs_attention`; chế độ `review` đưa nhận xét vào `open_questions` để người dùng xem ở cổng duyệt content. Brief không có `script_director` tiếp tục quy trình cũ.
 
 ## Đạo diễn giọng kể
@@ -79,12 +81,12 @@ Giọng máy đọc mọi câu cùng tốc độ, cùng độ to, cùng khoảng
 
 Một lần thử H001 viết 6 cảnh đã chạm giới hạn CLI 180 giây trước khi trả `structured_output`; log ghi khoảng 27.493 token đầu vào, 43.452 token suy luận và phần lời đáp đã nhìn thấy tới cảnh thứ hai. Vì thế lượt viết chi tiết truyện kinh dị hiện chia tối đa 2 cảnh (`config.json` → `content_chunk_scenes_by_video_type.horror_story`) và cho phép tối đa 300 giây; lượt dàn ý vẫn dùng 180 giây. Đây là giới hạn vận hành, chưa phải bảo đảm lượt viết thật sẽ đạt. `pilot.py run JOB content` tự làm theo `scripts/long_script.py`:
 
-1. **Lượt lập kế hoạch:** dàn ý đủ mọi cảnh (mục đích cụ thể, mã ý, chuyển cảnh) và danh sách nhân vật dùng chung.
+1. **Lượt lập kế hoạch:** dàn ý đủ mọi cảnh (mục đích cụ thể, mã ý, chuyển cảnh) và danh sách nhân vật dùng chung. Với truyện có `script_director`, cổng dàn ý ở trên chạy ngay sau kiểm tra cấu trúc.
 2. **Các lượt viết cảnh:** mỗi lượt viết tối đa 2 cảnh. Mỗi lượt nhận dàn ý, danh sách nhân vật, tóm tắt các đoạn trước (`story_so_far`), lời dẫn hai cảnh liền trước, và số chữ cần viết mỗi cảnh (tính từ thời lượng và tốc độ đọc trong brief).
 3. **Kiểm tra từng đoạn ngay khi nhận:** đúng mã cảnh, đúng dàn ý, không thêm nhân vật, điểm neo hợp lệ, đủ câu trích cho ý bắt buộc, mã ảnh/nhịp không trùng, lời dẫn không quá ngắn (dưới 60% mục tiêu thì dừng). Đoạn hỏng thì dừng ngay, không gọi tiếp.
 4. **Ghép và kiểm tra** như bản viết một lần, rồi mới tới duyệt.
 
-Không tự thử lại trong cùng lượt. Nếu một lượt hết giờ hoặc bị chặn, cần xem nguyên nhân trước khi quyết định chạy lại `pilot.py run JOB content`: các lượt đã xong của lần trước (cùng brief, cùng phản hồi, cùng prompt) được dùng lại, chỉ gọi phần còn thiếu. Thông tin chẩn đoán CLI được lưu an toàn ở `agent-attempts/<lần chạy>/agy-diagnostic-*.json`; trạng thái các đoạn đã hoàn tất ở `long-script.json`. Không lấy phản hồi chưa đầy đủ từ log làm kịch bản đã kiểm tra.
+Ngoại trừ tối đa hai lần lập lại dàn ý sau nhận xét của đạo diễn, đoạn cảnh lỗi không được tự thử lại trong cùng lượt. Nếu một lượt hết giờ hoặc bị chặn, cần xem nguyên nhân trước khi quyết định chạy lại `pilot.py run JOB content`: các lượt đã xong của lần trước (cùng brief, cùng phản hồi, cùng prompt) được dùng lại khi dàn ý đã đạt và mã băm còn khớp. Thông tin chẩn đoán CLI được lưu an toàn ở `agent-attempts/<lần chạy>/agy-diagnostic-*.json`; trạng thái các đoạn đã hoàn tất ở `long-script.json`. Không lấy phản hồi chưa đầy đủ từ log làm kịch bản đã kiểm tra.
 
 ## Nhạc nền và tiếng động (chỉ CC0)
 

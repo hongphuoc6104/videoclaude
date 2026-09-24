@@ -7,8 +7,9 @@ a few scenes per call (two for horror stories). Each call sees the plan, the run
 the last scenes' narration. Chunks are checked as they arrive, merged into one
 content-v3 payload and validated like a single-call draft.
 
-No automatic retry: a blocked attempt keeps its finished calls, and the next
-run with the same brief, feedback, previous revision and prompt reuses them.
+No automatic retry for failed scene chunks: a blocked attempt keeps its finished
+calls, and the next run with the same inputs reuses them. Horror outlines with
+the internal director enabled may be replanned up to two times before any chunk.
 """
 import copy
 import hashlib
@@ -160,10 +161,11 @@ def merge(b, revision, bhash, plan, parts, requests):
 # ------------------------------------------------------------------ prompts
 
 def plan_prompt(head, b, requests, previous):
+    from scripts import outline_director
     prompt = head + '\n' + json.dumps({'revision_requests': requests,
                                        'previous_plan': {k: previous[k] for k in ('outline', 'characters')} if previous else None},
                                       ensure_ascii=False)
-    return prompt + (
+    prompt += (
         f"\nThis is a long script of {b['scene_count']} scenes, written in several calls. This call returns only the plan: "
         f"the full outline (every scene {scene_ids(b)[0]}–{scene_ids(b)[-1]} with purpose, requirement ids and transition) "
         "and the full character list for every scene. Each purpose must be a concrete story event (who, where, what happens, "
@@ -172,6 +174,9 @@ def plan_prompt(head, b, requests, previous):
         "cover every required point. Characters: id, name, and appearance/outfit precise enough to redraw the same person "
         "(age, face, hair, build, clothes); include the channel host if the brief uses one. No management ids inside names, "
         "appearance or outfit.")
+    if outline_director.enabled(b):
+        prompt += outline_director.plan_guidance()
+    return prompt
 
 
 def chunk_prompt(head, style, b, plan, ids, summaries, tail, requests, previous):
@@ -218,26 +223,56 @@ def reusable(out, key):
 
 def generate(root, b, revision, bhash, head, style, requests, previous, previous_path, out):
     from scripts import agy_pipeline  # tests patch agy_pipeline.invoke
+    from scripts import outline_director
     import jsonschema
     size = chunk_size(root, b)
     key = key_of(b, bhash, requests, previous_path, head, style, size)
     old = reusable(out, key)
-    state = {'key': key, 'chunk_scenes': size, 'plan': old.get('plan'), 'chunks': {}, 'reused_from': old.get('folder')}
+    director_on = outline_director.enabled(b)
+    reused_plan = old.get('plan')
+    saved_critique = old.get('outline_director_pass')
+    verified_reuse = director_on and outline_director.saved_pass_matches(reused_plan, saved_critique)
+    state = {'key': key, 'chunk_scenes': size,
+             'plan': reused_plan if (not director_on or verified_reuse) else None,
+             'chunks': {}, 'reused_from': old.get('folder')}
+    if verified_reuse:
+        state['outline_director_pass'] = saved_critique
     write(out / STATE, state)
     if state['plan'] is None:
         schema = plan_schema(root)
-        plan = agy_pipeline.invoke(plan_prompt(head, b, requests, previous), schema, out)['structured_output']
-        jsonschema.validate(plan, schema)
-        check_plan(b, plan)
-        state['plan'] = plan
+        candidate = reused_plan
+        critique = None
+        for round_number in range(outline_director.MAX_REPLANS + 1 if director_on else 1):
+            if candidate is None:
+                prompt = plan_prompt(head, b, requests, previous)
+                if critique is not None:
+                    prompt += outline_director.replan_guidance(prior, critique)
+                candidate = agy_pipeline.invoke(prompt, schema, out)['structured_output']
+            jsonschema.validate(candidate, schema)
+            if critique is not None and candidate['characters'] != prior['characters']:
+                raise Blocked('OUTLINE_DIRECTOR_REPLAN: character identities or descriptions changed')
+            check_plan(b, candidate)
+            if not director_on:
+                break
+            critique = outline_director.assess(root, b, candidate, out, round_number)
+            if critique['pass']:
+                break
+            if round_number == outline_director.MAX_REPLANS:
+                raise Blocked('OUTLINE_DIRECTOR_NEEDS_ATTENTION: outline quality failed after '
+                              f'{outline_director.MAX_REPLANS} replans; see {out}')
+            prior = candidate
+            candidate = None
+        state['plan'] = candidate
+        state['outline_director_pass'] = critique if director_on else None
         write(out / STATE, state)
     plan = state['plan']
     write(out / 'outline.json', {'outline': plan['outline']})
+    reusable_chunks = old.get('chunks', {}) if reused_plan == plan else {}
     schema = chunk_schema(root)
     parts, used, summaries, tail = [], set(), [], []
     for ids in split(b, size):
         name = f'{ids[0]}-{ids[-1]}'
-        data = old.get('chunks', {}).get(name)
+        data = reusable_chunks.get(name)
         if data is None:
             data = agy_pipeline.invoke(chunk_prompt(head, style, b, plan, ids, summaries, tail, requests, previous),
                                        schema, out, timeout=chunk_timeout(b))['structured_output']

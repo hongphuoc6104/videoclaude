@@ -7,6 +7,12 @@ description: Critique a complete Vietnamese horror narration draft against six s
 
 The writer owns the draft. Score the entire spoken Vietnamese story after structural validation. Preserve quoted Vietnamese evidence exactly. This critique is internal; it never approves content or changes its words, outline, coverage, claims, images, or anchors. A failed draft returns to the writer for a complete regeneration: finalize narration first, then place fresh quotes and anchors. The existing content review gate still applies.
 
+## Cổng dàn ý truyện dài
+
+Với brief `horror_story` có bật `script_director`, `scripts/long_script.py` kiểm tra dàn ý đầy đủ **trước khi viết bất kỳ cặp cảnh nào**. Đây là một bước nội bộ, không thêm cổng duyệt công khai. Bộ phê bình đọc tất cả `purpose`, các điểm bắt buộc trong brief và văn phong truyện; chấm năm điều: câu móc không tiết lộ cú lật, khoảng nhẹ nhõm giả thực sự ở giữa truyện, trình tự cú lật và chi tiết gieo–trả theo hạt giống, nhân quả/ngôi kể/khẳng định có cơ sở, lời khép của người dẫn không rủ người xem thử làm theo.
+
+Mỗi điều cần mã cảnh và câu trích **nguyên văn từ `purpose`**. Mã Python kiểm tra câu trích thuộc đúng cảnh, tính kết quả từ từng mục thay vì tin cờ `pass` của bộ phê bình. Mục chưa đạt phải có yêu cầu sửa cụ thể cho cảnh liên quan. Người viết được lập lại **toàn bộ dàn ý tối đa hai lần**, giữ số cảnh, mã ý bắt buộc và danh sách nhân vật nhất quán. Mỗi dàn ý và nhận xét được lưu trong `agent-attempts/<attempt>/outline-*-round-*.json`. Hết lượt vẫn chưa đạt thì dừng với `OUTLINE_DIRECTOR_NEEDS_ATTENTION`; không viết cảnh, không đưa dàn ý lỗi sang bước duyệt content. Dàn ý tái sử dụng từ lượt bị chặn cũng phải qua cổng này trước khi viết tiếp.
+
 Use `horror/narration-style.md` and the brief's mood and point of view. Give each criterion an integer score from 0 to 2, at least one scene-specific quote as evidence, and concrete notes:
 
 | Criterion | 0 | 1 | 2 |
