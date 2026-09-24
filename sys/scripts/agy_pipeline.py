@@ -38,10 +38,13 @@ def _cli_diagnostic(workspace,reason,stdout,stderr,elapsed,timeout,returncode=No
  write(path,details)
  return path.name
 
-def invoke(prompt,schema,workspace,conversation=None,timeout=180):
+def invoke(prompt,schema,workspace,conversation=None,timeout=180,effort=None):
+ if effort is not None and effort not in ('low','medium','high'):
+  raise ValueError('AGY_EFFORT: expected low, medium or high')
  binary=shutil.which('agy')
  if not binary:raise Blocked('AGY_NOT_INSTALLED: install Antigravity CLI')
  args=[binary,'-p',prompt,'--output-format','json','--json-schema',json.dumps(schema,ensure_ascii=False),'--print-timeout',f'{timeout}s']
+ if effort is not None:args+=['--effort',effort]
  if conversation:args+=['--conversation',conversation]
  # Account sign-in only; never silently select an API-key provider.
  settings=Path.home()/'.gemini/antigravity-cli/settings.json'

@@ -14,6 +14,7 @@ CRITERIA = (
     'dread_escalation', 'pacing_rhythm', 'climax_payoff',
     'oral_storytelling_voice', 'cliche_budget', 'hook_per_scene',
 )
+HORROR_CRITIC_TIMEOUT_SECONDS = 600
 
 
 def enabled(brief):
@@ -72,7 +73,9 @@ def assess(root, brief, payload, out, round_number):
               'Give concrete revision_requests for every weak criterion, naming scenes and the specific change. '
               'Do not rewrite the draft, its anchors, or coverage.\n\nDirector rubric:\n' + guide +
               '\n\nGenre style:\n' + style + '\n\nDraft data:\n' + json.dumps(context, ensure_ascii=False))
-    raw = agy_pipeline.invoke(prompt, schema(), out)
+    options = ({'timeout': HORROR_CRITIC_TIMEOUT_SECONDS, 'effort': 'high'}
+               if brief.get('video_type') == 'horror_story' else {})
+    raw = agy_pipeline.invoke(prompt, schema(), out, **options)
     assessment = raw['structured_output']
     jsonschema.validate(assessment, schema())
     scenes = {s['id']: s for s in payload['scenes']}

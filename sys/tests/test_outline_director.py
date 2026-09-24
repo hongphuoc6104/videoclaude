@@ -95,6 +95,23 @@ class OutlineDirectorTests(unittest.TestCase):
             return long_script.generate(ROOT, brief or self.brief, 1, 'test-hash', 'Write story.',
                                         'Style.', [], None, None, out)
 
+    def test_horror_outline_and_critic_have_separate_bounded_cli_options(self):
+        calls = []
+
+        def fake(prompt, schema, workspace, **kwargs):
+            calls.append((schema['properties'], kwargs))
+            if 'criteria' in schema['properties']:
+                return {'structured_output': grade(self.plan_b)}
+            if 'outline' in schema['properties']:
+                return {'structured_output': copy.deepcopy(self.plan_b)}
+            raise Blocked('TEST_CHUNK_REACHED')
+
+        with self.assertRaisesRegex(Blocked, 'TEST_CHUNK_REACHED'):
+            self.generate(self.output('budgets'), fake)
+        self.assertEqual(calls[0][1], {'timeout': 360, 'effort': 'high'})
+        self.assertEqual(calls[1][1], {'timeout': 300, 'effort': 'high'})
+        self.assertEqual(calls[2][1], {'timeout': 300})
+
     def test_historical_outlines_fail_before_any_chunk_and_keep_evidence(self):
         cases = (
             (self.plan_a, ('genuine_false_relief', 'seed_twist_and_payoff',

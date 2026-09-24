@@ -98,6 +98,17 @@ class ScriptDirectorTests(unittest.TestCase):
             result = agy_pipeline.generate(self.p, self.job)
         return result, prompts
 
+    def test_full_horror_script_critic_has_bounded_cli_options(self):
+        from scripts import script_director
+        brief = dict(self.p.brief(self.job)[0], video_type='horror_story')
+        with tempfile.TemporaryDirectory() as folder:
+            with patch('scripts.agy_pipeline.invoke', return_value={
+                    'structured_output': self.grade(True)}) as invoke:
+                record = script_director.assess(self.p.root, brief,
+                                                self.first, Path(folder), 0)
+        self.assertTrue(record['pass'])
+        self.assertEqual(invoke.call_args.kwargs, {'timeout': 600, 'effort': 'high'})
+
     def test_failed_first_round_regenerates_full_draft_and_anchors(self):
         result, prompts = self.run_with_fake(2)
         self.assertEqual(self.p.rows(self.job)['content']['state'], 'awaiting_review')

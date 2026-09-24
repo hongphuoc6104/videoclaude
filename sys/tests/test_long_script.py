@@ -61,6 +61,7 @@ class LongScriptTests(unittest.TestCase):
         self.assertEqual(long_script.chunk_size(ROOT, dict(b, video_type='horror_story')), 2)
         self.assertEqual(long_script.chunk_timeout(dict(b, video_type='horror_story')), 300)
         self.assertEqual(long_script.chunk_timeout(b), 180)
+        self.assertEqual(long_script.HORROR_OUTLINE_TIMEOUT_SECONDS, 360)
         self.assertFalse(long_script.enabled(ROOT, b))  # ordinary 6-scene brief keeps its path
         self.assertTrue(long_script.enabled(ROOT, dict(b, video_type='horror_story')))
         self.assertTrue(long_script.enabled(ROOT, dict(b, scene_count=28)))

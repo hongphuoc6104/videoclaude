@@ -16,6 +16,7 @@ CRITERIA = (
     'host_closing_no_dare',
 )
 MAX_REPLANS = 2
+HORROR_CRITIC_TIMEOUT_SECONDS = 300
 
 
 def enabled(brief):
@@ -139,7 +140,9 @@ def assess(root, brief, plan, out, round_number):
         'Do not write the story or modify the outline.\n\nGenre style:\n' + style +
         '\n\nBrief and outline data:\n' + json.dumps(context, ensure_ascii=False)
     )
-    raw = agy_pipeline.invoke(prompt, schema(), out)
+    options = ({'timeout': HORROR_CRITIC_TIMEOUT_SECONDS, 'effort': 'high'}
+               if brief.get('video_type') == 'horror_story' else {})
+    raw = agy_pipeline.invoke(prompt, schema(), out, **options)
     response = raw['structured_output']
     write(out / f'outline-critique-raw-round-{round_number}.json', response)
     jsonschema.validate(response, schema())

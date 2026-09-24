@@ -23,6 +23,7 @@ CHUNK_KEYS = ('scenes', 'coverage', 'claims', 'revision_response', 'open_questio
 STATE = 'long-script.json'
 UNRESOLVED = 'No chunk of the script addressed this request.'
 HORROR_CHUNK_TIMEOUT_SECONDS = 300
+HORROR_OUTLINE_TIMEOUT_SECONDS = 360
 
 
 def chunk_size(root, b=None):
@@ -253,7 +254,9 @@ def generate(root, b, revision, bhash, head, style, requests, previous, previous
                 prompt = plan_prompt(head, b, requests, previous)
                 if critique is not None:
                     prompt += outline_director.replan_guidance(prior, critique)
-                candidate = agy_pipeline.invoke(prompt, schema, out)['structured_output']
+                options = ({'timeout': HORROR_OUTLINE_TIMEOUT_SECONDS, 'effort': 'high'}
+                           if b.get('video_type') == 'horror_story' else {})
+                candidate = agy_pipeline.invoke(prompt, schema, out, **options)['structured_output']
             jsonschema.validate(candidate, schema)
             if critique is not None and candidate['characters'] != prior['characters']:
                 raise Blocked('OUTLINE_DIRECTOR_REPLAN: character identities or descriptions changed')

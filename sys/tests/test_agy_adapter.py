@@ -44,6 +44,32 @@ class AgyAdapterTests(unittest.TestCase):
   from types import SimpleNamespace
   with patch('scripts.agy_pipeline.shutil.which',return_value='/fake/agy'),patch('scripts.agy_pipeline.Path.home',return_value=self.root),patch('scripts.agy_pipeline.subprocess.run',return_value=SimpleNamespace(returncode=0,stdout='{"status":"SUCCESS"}',stderr='')):
    with self.assertRaisesRegex(Blocked,'missing structured_output'):invoke('x',{},self.root)
+ def test_cli_passes_bounded_timeout_and_optional_effort(self):
+  from types import SimpleNamespace
+  result=SimpleNamespace(returncode=0,stdout='{"status":"SUCCESS","structured_output":{}}',stderr='')
+  with patch('scripts.agy_pipeline.shutil.which',return_value='/fake/agy'),patch('scripts.agy_pipeline.Path.home',return_value=self.root),patch('scripts.agy_pipeline.subprocess.run',return_value=result) as run:
+   invoke('outline',{},self.root,timeout=300,effort='medium')
+  args=run.call_args.args[0]
+  self.assertEqual(args[args.index('--print-timeout')+1],'300s')
+  self.assertEqual(args[args.index('--effort')+1],'medium')
+  self.assertEqual(run.call_args.kwargs['timeout'],315)
+  with patch('scripts.agy_pipeline.shutil.which',return_value='/fake/agy'),patch('scripts.agy_pipeline.Path.home',return_value=self.root),patch('scripts.agy_pipeline.subprocess.run',return_value=result) as run:
+   invoke('other',{},self.root)
+  self.assertNotIn('--effort',run.call_args.args[0])
+  with self.assertRaisesRegex(ValueError,'AGY_EFFORT'):
+   invoke('bad',{},self.root,effort='unbounded')
+ def test_rehearsal_wrapper_forwards_stage_options(self):
+  from types import SimpleNamespace
+  from unittest.mock import Mock
+  from scripts.rehearse_content import instrument_invoke
+  original=Mock(return_value={'status':'SUCCESS','structured_output':{}})
+  adapter=SimpleNamespace(invoke=original)
+  records=[]
+  instrument_invoke(adapter,records)
+  adapter.invoke('outline',{},self.root,timeout=360,effort='high')
+  original.assert_called_once_with('outline',{},self.root,conversation=None,timeout=360,effort='high')
+  self.assertEqual(records[0]['print_timeout_seconds'],360)
+  self.assertEqual(records[0]['effort'],'high')
  def test_near_timeout_records_safe_diagnostic_and_does_not_retry(self):
   from types import SimpleNamespace
   stdout=json.dumps({'status':'SUCCESS','response':'unfinished scene with SECRET_TOKEN'})

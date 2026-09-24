@@ -125,16 +125,19 @@ def instrument_invoke(agy_pipeline, calls_log):
     without altering agy_pipeline.py on disk or changing what it does."""
     original = agy_pipeline.invoke
 
-    def wrapped(prompt, schema, workspace, conversation=None, timeout=180):
+    def wrapped(prompt, schema, workspace, conversation=None, timeout=180, effort=None):
         record = {
             'call_index': len(calls_log) + 1,
             'prompt_chars': len(prompt),
             'schema_top_level_keys': sorted(schema.get('properties', {}).keys()) if isinstance(schema, dict) else None,
             'conversation_reused': bool(conversation),
+            'print_timeout_seconds': timeout,
+            'effort': effort,
             'wall_started_at': time.time(),
         }
         try:
-            result = original(prompt, schema, workspace, conversation, timeout)
+            result = original(prompt, schema, workspace, conversation=conversation,
+                              timeout=timeout, effort=effort)
             record['ok'] = True
             record['status'] = result.get('status')
             record['agy_duration_seconds'] = result.get('duration_seconds')
