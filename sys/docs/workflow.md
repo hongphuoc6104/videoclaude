@@ -53,7 +53,7 @@ Chạy hàng đợi hữu hạn chứa mã các job auto đã tạo:
 python3 pilot.py batch --queue queue.json
 ```
 
-Các job chạy lần lượt để tránh tranh RAM trên máy 16 GB. Lỗi riêng một job được ghi needs_attention, chuyển job tiếp theo. Lỗi chung đăng nhập/CAPTCHA/hạn mức/preflight dừng hàng đợi. Chạy lại hàng đợi bỏ qua job đã hoàn tất; báo cáo từng lượt nằm trong .state/batch-results/. Không tự chạy nền vô hạn hoặc tự tạo lịch.
+Các job chạy lần lượt để tránh tranh RAM trên máy 16 GB. Lỗi riêng một job được ghi needs_attention, chuyển job tiếp theo. Lỗi chung đăng nhập/CAPTCHA/preflight dừng hàng đợi; hết hạn mức tạo ảnh thì chuyển profile kế tiếp (xem experiments/b2_illustrator/CONTROLLER.md), hết mọi profile mới dừng. Chạy lại hàng đợi bỏ qua job đã hoàn tất; báo cáo từng lượt nằm trong .state/batch-results/. Không tự chạy nền vô hạn hoặc tự tạo lịch.
 
 ## Sửa và tiếp tục
 
@@ -90,6 +90,20 @@ Job mới dùng brief/content 3.0: cảnh → hình → nhịp, chữ tạo cùn
 ## Giọng đọc và đầu ra
 
 Việt: Gwen-TTS nhân bản giọng `assets/voices/pham-tuyen-gwen` qua `.venv-gwen` (GPU CUDA, cần khoảng 2,5 GB VRAM, đọc từng câu, xuất 48 kHz). Anh: Alba / Pocket TTS CPU INT8, tốc độ gốc (cần cài lại `.venv-en`). Bản 9:16 có tiếng Việt/phụ đề; 16:9 có tiếng Anh, timeline riêng và ẩn phụ đề. Dual tạo cả hai. Phụ đề cắt một lần ở Python (adapters.subtitle_cues); .srt và khung hình dùng chung danh sách cue nên luôn khớp nhau. Thời lượng kiểm tra theo brief, không nới bằng config. Tạo video AI bị khóa.
+
+## Dựng video theo đoạn
+
+Video không dựng một lần cả timeline. `adapters.render` chạy `renderer/render.mjs DIR --prepare` (kiểm tra bố cục phụ đề, ghi `plans.json`, chưa dựng), rồi `render_parts.py` chia từng bản đầu ra thành đoạn khoảng `render_segment_seconds` giây (config, mặc định 120; video 20 phút ≈ 10 đoạn). Chỉ cắt ở đầu cảnh, không cắt giữa một câu phụ đề; cảnh dài hơn mức mục tiêu giữ nguyên trong một đoạn, đoạn đuôi quá ngắn gộp vào đoạn trước.
+
+Mỗi đoạn là khung [đầu, cuối) của đúng composition đầy đủ (`frameRange` của Remotion), dựng không tiếng. Khung hình chỉ phụ thuộc số khung tuyệt đối nên chuyển cảnh, zoom/trượt và phụ đề giống hệt bản dựng một lần. Các đoạn được nối bằng concat demuxer của ffmpeg, sao chép luồng không mã hóa lại khi mọi đoạn cùng thông số (codec, profile, kích thước, pix_fmt, fps, time_base, extradata); khác thông số thì nối bằng mã hóa lại và ghi `join: reencode`. Toàn bộ bản âm thanh đã master (mix.wav hoặc narration.wav) được ghép một lần sau cùng, AAC 320k 48 kHz như trước, nên chỗ nối không thể có tiếng click hay lệch.
+
+Cache đoạn nằm ở `runs/JOB/cache/render-parts/<hash>.mp4`. Hash gồm lát cảnh/phụ đề mà đoạn hiển thị (ảnh tính theo nội dung file), thuộc tính dựng của bản đầu ra, khoảng khung, mã nguồn renderer, phiên bản Remotion và `fps`. Chạy lại chỉ dựng đoạn thiếu hoặc đã đổi: thay ảnh một cảnh chỉ dựng lại đoạn chứa cảnh đó. Đổi độ dài âm thanh của một cảnh làm mọi đoạn phía sau lệch thời điểm nên phải dựng lại các đoạn đó.
+
+Đoạn lỗi tự thử lại một lần. Lỗi lần hai thì render bị blocked, thông báo nêu số thứ tự đoạn, khoảng khung, cảnh và log `revisions/render/N/parts/<file>-part-NN.log`; các đoạn đã đạt vẫn nằm trong cache, lần chạy sau chỉ dựng đoạn còn thiếu. Kiểm tra bắt buộc: số khung mỗi đoạn đúng khoảng, đoạn bắt đầu bằng keyframe, file nối đủ số khung của timeline, âm thanh nguồn dài đúng timeline và luồng âm thanh/hình sau ghép lệch không quá 0,05 giây. Kết quả ghi ở `render-parts.json` trong revision. Các cổng render cũ trong pilot.py giữ nguyên.
+
+Một đoạn nhìn sai dù đầu vào không đổi (hash giữ nguyên): chạy `python3 render_parts.py forget runs/JOB/revisions/render/N/render-parts.json --part K` (thêm `--file video_16x9.mp4` với dual). Lệnh chuyển file cache của đoạn K sang `cache/render-parts/rejected/`, không xóa; sau đó `reject JOB video` rồi `resume JOB`, bản mới chỉ dựng lại đoạn K.
+
+`node renderer/render.mjs DIR` không kèm chế độ vẫn là đường dựng một lần cũ, chỉ dùng cho benchmark/script lịch sử, không dùng cho job.
 
 ## Dọn dẹp
 

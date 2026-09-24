@@ -549,7 +549,13 @@ def audio(p,j,out):
   # pauses, per-line level; the worker reads directed scenes line by line.
   from scripts.delivery import direct
   reqs={s['id']:s.get('requirements',[]) for s in content['scenes']}
-  plan={d['scene_id']:d for d in direct([dict(sc,requirements=reqs[sc['scene_id']]) for sc in scenes],profile)}
+  directed=direct([dict(sc,requirements=reqs[sc['scene_id']]) for sc in scenes],profile,
+                  mood=profile.get('mood'))
+  if (profile.get('voice_director') or {}).get('enabled'):
+   from scripts.voice_director import direct_voice
+   directed=direct_voice(directed,profile.get('mood'),retake,profile['voice_director'],
+                         p.job(j)/'cache/voice-director',out/'voice-direction.json',p.root)
+  plan={d['scene_id']:d for d in directed}
   for sc in scenes:sc.update({k:plan[sc['scene_id']][k] for k in ('texts','speeds','gains','gaps','tail')})
  else:
   for k,sc in enumerate(scenes):
@@ -626,9 +632,21 @@ def render(p,j,out):
    props['audio_files'][language]=name
   write(out/'sound.json',{'license':sound.LICENSE,'plan':b['sound'],'items':list({x['id']:x for x in used}.values())})
  write(out/'props.json',props)
- r=subprocess.run(['node',str(p.root/'renderer/render.mjs'),str(out.resolve())],cwd=p.root,capture_output=True,text=True,timeout=render_timeout(config(p),props));(out/'render.log').write_text(r.stdout+'\n'+r.stderr)
- if r.returncode:raise Blocked('Render or layout check failed; see render.log: '+r.stderr[-500:])
- result={'video':rel(p,j,out/'video.mp4'),'stills':[rel(p,j,out/(s['id']+'.png')) for s in scenes],'layout_report':rel(p,j,out/'layout.json'),'duration':en['duration'] if lang=='en' else snd['duration']}
+ # Layout check and output plans first (no render); then the timeline is rendered in
+ # scene-aligned parts of about render_segment_seconds, cached under
+ # runs/JOB/cache/render-parts/, joined and muxed with the full audio (render_parts.py).
+ cfg=config(p);timeout=render_timeout(cfg,props)
+ r=subprocess.run(['node',str(p.root/'renderer/render.mjs'),str(out.resolve()),'--prepare'],cwd=p.root,capture_output=True,text=True,timeout=timeout)
+ log=[r.stdout+'\n'+r.stderr]
+ if r.returncode:(out/'render.log').write_text(log[0]);raise Blocked('Render or layout check failed; see render.log: '+r.stderr[-500:])
+ import render_parts
+ try:
+  render_parts.render_all(p.root,out,p.job(j)/'cache/render-parts',cfg,timeout,log)
+  first=read(out/'plans.json')[0]
+  render_parts.stills(out/first['file'],first['props']['scenes'],first['fps'],first['durationInFrames'],out)
+  if first['file']!='video.mp4':shutil.copy(out/first['file'],out/'video.mp4')
+ finally:(out/'render.log').write_text('\n'.join(log))
+ result={'video':rel(p,j,out/'video.mp4'),'stills':[rel(p,j,out/(s['id']+'.png')) for s in scenes],'layout_report':rel(p,j,out/'layout.json'),'render_parts':rel(p,j,out/'render-parts.json'),'duration':en['duration'] if lang=='en' else snd['duration']}
  if (out/'video_16x9.mp4').exists():result['video_16x9']=rel(p,j,out/'video_16x9.mp4')
  if (out/'video_9x16.mp4').exists():result['video_9x16']=rel(p,j,out/'video_9x16.mp4')
  if (out/'sound.json').exists():result['sound_manifest']=rel(p,j,out/'sound.json')

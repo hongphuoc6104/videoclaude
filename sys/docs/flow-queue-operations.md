@@ -8,7 +8,7 @@ Cập nhật 22/09/2026. Đọc INDEX.md, AGENTS.md và docs/M2-FLOW.md trước
 - Bản local đã thử: https://flow.google.com/project/7c815425-4625-4afb-ba84-4290d3fa9ea4/tool/bc72cb6a-c68c-49a3-b089-d94fc27eb8dd
 - Bản PC trước đó: https://flow.google.com/project/41d3d574-907c-4bb0-90a7-c98f85f5e22b/tool/2791e8ba-9ae0-4ca9-9368-b7efe600c53d
 
-Pull Git không tự cập nhật bản tool đã remix trong tài khoản Flow khác. Mở link share bằng đúng profile dự án, kiểm tra bản có Initialize Generation (thêm vào hàng đợi), Start Queue, Nano Banana Pro và Workers 1/2/4. Nếu remix tạo URL mới, cập nhật tool_url trong machine.local.json trên máy đó. Không tự đổi tài khoản hoặc profile. Chưa kiểm chứng bản remix cũ tự nhận thay đổi; không mặc định có tự cập nhật.
+Pull Git không tự cập nhật bản tool đã remix trong tài khoản Flow khác. Mở link share bằng đúng profile dự án, kiểm tra bản có Initialize Generation (thêm vào hàng đợi), Start Queue, Nano Banana Pro và Workers 1/2/4. Nếu remix tạo URL mới, cập nhật tool_url trong machine.local.json trên máy đó. Chuyển profile tự động chỉ chạy sau lỗi hết hạn mức tạo ảnh được nhận diện, khi profile kế tiếp đã có tool_url và tham chiếu hợp lệ; đăng nhập/CAPTCHA hoặc trạng thái chưa rõ vẫn dừng. Chưa kiểm chứng bản remix cũ tự nhận thay đổi; không mặc định có tự cập nhật.
 
 Link share có thể cho người có link xem/remix tài nguyên trong tool; không đặt thông tin đăng nhập vào tài liệu hoặc tool.
 
@@ -70,12 +70,18 @@ Không sửa khóa ambiguous của lần chạy cũ bằng suy đoán: phải ki
 
 ## Bộ nhớ của tool và giải phóng ảnh kẹt
 
-Tool lưu base64 của mọi kết quả trong `localStorage` khóa `VP_LAB_STATE_V2` (Chrome giới hạn khoảng 5 MB mỗi origin). Đo thật ngày 23/09/2026: sau 22 ảnh trạng thái dài 5.166.163 ký tự; ảnh kế tiếp được tạo nhưng tool không lưu được ("Persistence failure after result") và tự khóa. Mỗi lần tải tab tool vì thế chỉ chứa khoảng 25 ảnh nếu không dọn. Quan sát cùng ngày: trạng thái này chỉ sống theo lần tải tab (tab mới sau khi phiên mở lại hoặc Chrome khởi động lại bắt đầu với localStorage trống), nên ảnh chỉ còn trong tab cũ sẽ mất khi tab đóng; nhật ký AttemptStore mới là nguồn thật.
+Tool lưu base64 của mọi kết quả trong `localStorage` khóa `VP_LAB_STATE_V2` (ngân sách đo được 5.242.880 ký tự UTF-16 cho origin). Đo thật ngày 23/09/2026: sau 22 ảnh trạng thái dài 5.166.163 ký tự; ảnh kế tiếp được tạo nhưng tool không lưu được ("Persistence failure after result") và tự khóa. Nhật ký AttemptStore và bản sao tool-state trên đĩa là nguồn đối chiếu khi dọn dữ liệu trình duyệt; không xem việc tải lại tab là bằng chứng ảnh đã được thu.
 
-- Trước mỗi lượt hàng đợi, nếu trạng thái dài hơn 2.500.000 ký tự, queue-runner sao lưu toàn bộ trạng thái vào `results/controller/tool-state/<thời điểm>.json`, xóa khóa và tải lại tab. Chỉ làm khi mọi mục trong tool đã `collected` trong nhật ký AttemptStore; còn mục nào khác thì dừng với `TOOL_STATE_HAS_UNSAVED_ITEMS`.
+- Trước mỗi lượt, queue-runner đo toàn bộ `localStorage`, ước lượng chỗ cho ảnh kế tiếp và chỉ gửi số yêu cầu nằm dưới 80% ngân sách. Khi cần giải phóng chỗ, nó sao lưu trạng thái vào `results/controller/tool-state/<thời điểm>.json` trước rồi mới dọn; mục chưa thu hoặc chưa rõ kết quả chặn dọn. Nếu không còn chỗ an toàn, lượt gửi dừng trước khi tạo ảnh.
 - Mỗi yêu cầu trong một lượt được xử lý riêng: ảnh xong được lấy về ngay; mục tool báo UNKNOWN/FAILED hoặc quá 180 giây được trả về là lỗi riêng (pipeline ghi ambiguous), các ảnh khác vẫn được lưu.
 - Ảnh đã gửi nhưng không bao giờ lấy được (nhật ký `submitting`/`unknown`) chỉ được bỏ khỏi tool bằng quyết định của người vận hành: ghi file `{"queueIds":["REQ-…"],"reason":"…"}` rồi chạy `node experiments/b2_illustrator/session.mjs tool-snapshot:queue-release:<file>`. Lệnh sao lưu trạng thái, từ chối nếu mục đó đã có kết quả chưa lấy hoặc có mục lạ, rồi tải lại tool sạch. Nhật ký pipeline của yêu cầu đó vẫn giữ nguyên (ambiguous).
 - `node experiments/b2_illustrator/session.mjs tool-snapshot:queue-state` chỉ đọc: trạng thái từng mục và dung lượng đã dùng.
 - queue-runner được cache trong phiên: sau khi sửa file này phải mở phiên mới.
 - Flow trả lời mà không có ảnh (tool ghi UNKNOWN/FAILED kèm lỗi, không mediaId, không kết quả; ví dụ "Expected object response with media fields") là `FLOW_NO_MEDIA`, khác với chưa rõ: không có ảnh nào bị mất. Pipeline ghi `failed_no_media` và thử lại đúng một lần với khóa mới (`identity.retry`), bản ghi cũ giữ làm lịch sử. Lần thứ hai vẫn không có ảnh thì dừng với `FLOW_NO_MEDIA_REPEATED`: sửa mô tả ảnh (reject media --scene) rồi mới thử. Cùng một yêu cầu đã chạy được ở job trước rồi lỗi ở job sau, nên lỗi này có thể thoáng qua, không nhất thiết là bộ lọc nội dung.
 - Tool tự khóa UNKNOWN sau một mục lỗi. Trước lượt kế tiếp, queue-runner sao lưu và tải lại tool khi mọi mục còn lại đã collected hoặc là mục không có ảnh; còn mục nào có kết quả chưa lấy hoặc đang chạy thì vẫn dừng.
+
+## Hết hạn mức tài khoản Flow
+
+Lỗi Flow xác nhận hết hạn mức **và không sinh ảnh** được ghi vào nhật ký; khi `automatic_account_switching=true`, hàng đợi thử profile kế tiếp trong `priority` đã cấu hình `tool_url` và ánh xạ media mascot. Chỉ những yêu cầu chưa sinh ảnh được gửi lại. Profile hết hạn mức được ghi ở `results/controller/profile-exhaustion.json` đến mốc reset; mỗi lần chuyển có log `results/controller/profile-switches.ndjson`. Hết profile hợp lệ thì dừng. Lỗi bộ nhớ tool sau khi sinh ảnh, đăng nhập, CAPTCHA và lỗi không phân loại không được chuyển profile để gửi lại.
+
+`machine.local.json` ghi đè `browser-profiles.json`. Trên máy hiện tại, `automatic_account_switching=false` trong file riêng theo máy và các profile tiếp theo chưa có tool_url/tham chiếu đã kiểm tra; vì vậy mã chuyển profile **chưa vận hành thật**. Chỉ bật sau khi mở bản tool của từng tài khoản, đăng ký hoặc xác minh media mascot và kiểm tra đúng profile trong Chrome. Không ghi đã nghiệm thu chỉ vì unit test đạt.

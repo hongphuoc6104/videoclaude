@@ -251,6 +251,8 @@ def make_brief(seed, cfg, choice):
     if cfg.get('visual_density'):
         # How often the picture must change (checked by story_plan.validate_plan on estimated scene length).
         brief['planning']['visual_density'] = {k: v for k, v in cfg['visual_density'].items() if k != 'note'}
+    if cfg.get('script_director'):
+        brief['script_director'] = {k: v for k, v in cfg['script_director'].items() if k != 'note'}
     if ratio == '16:9':
         brief['audio_language'] = 'vi'
     # CC0 bed follows the chosen mood; effects are placed by the script on the words that describe them.

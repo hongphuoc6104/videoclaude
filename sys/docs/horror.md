@@ -31,6 +31,12 @@ Khung 16:9 đọc tiếng Việt (`audio_language: "vi"` trong brief); không c�
 - **Ngôi kể** (`--pov`): ghi vào brief thành yêu cầu "Ngôi kể: …".
 - **Văn phong kịch bản** (`horror/narration-style.md`, tiếng Anh vì là chỉ dẫn nội bộ): cách dựng nỗi sợ bằng chi tiết sai lệch nhỏ, leo thang điềm lạ, gieo chi tiết rồi trả ở cú lật, nhịp câu hợp giọng đọc máy, giới hạn sáo ngữ, cấu trúc theo tỷ lệ cảnh (mở 1 cảnh, dựng ~20%, leo thang ~45%, cao trào ~20%, dư âm ~10%, khép 1 cảnh) và cách tả hình. File này được nạp vào lời gọi viết kịch bản qua `config.json` → `narration_styles.horror_story`, sau hướng dẫn lời dẫn chung.
 
+## Đạo diễn kịch bản
+
+`horror/channel.json` → `script_director` được chép vào brief khi tạo job mới. Với truyện kinh dị có bật cấu hình này, bản kịch bản đầy đủ được kiểm tra cấu trúc rồi gửi cho agy chấm độc lập theo sáu tiêu chí trong `.agents/skills/vp-script-director/SKILL.md`: leo thang nỗi sợ, nhịp câu, cao trào và chi tiết được trả, giọng kể miệng, sáo ngữ, móc cuối cảnh. Mỗi tiêu chí đạt ít nhất 1/2 và tổng đạt ít nhất 10/12; mã Python tính kết quả từ điểm và bằng chứng do agy trả về.
+
+Nếu chưa đạt, người viết nhận nhận xét cụ thể và tạo lại toàn bộ bản nháp, tối đa hai lần. Lời dẫn mới được chốt trước khi người viết đặt lại coverage, claims và anchor; đạo diễn không sửa trực tiếp lời dẫn đã neo. Mỗi vòng lưu điểm, dẫn chứng và bản người viết tại `runs/<job>/agent-attempts/<attempt>/`. Hết hai lượt mà vẫn chưa đạt: chế độ `auto` dừng với `needs_attention`; chế độ `review` đưa nhận xét vào `open_questions` để người dùng xem ở cổng duyệt content. Brief không có `script_director` tiếp tục quy trình cũ.
+
 ## Đạo diễn giọng kể
 
 Giọng máy đọc mọi câu cùng tốc độ, cùng độ to, cùng khoảng nghỉ, nên cao trào nghe y như đoạn mở đầu. Đo trên job `thu-5p-h007g`: tốc độ giữa 10 cảnh chỉ lệch ±5%, độ to lệch 0,8 dB. Bước giọng đọc vì vậy có thêm phần đạo diễn (`scripts/delivery.py`). Phần này chỉ đổi tốc độ, độ to và khoảng lặng; không đổi chữ và vẫn giữ giọng Phạm Tuyên.
@@ -56,6 +62,7 @@ Giọng máy đọc mọi câu cùng tốc độ, cùng độ to, cùng khoảng
   - Câu cuối của cảnh căng được đọc sau một khoảng lặng và chậm hơn.
   - Độ to mọi câu giữ bằng nhau (`gain_db` = 0). Bản thử ngày 2026-09-23 đọc thoại nhỏ hơn 4 dB và câu khép cảnh nhỏ hơn 6 dB. Người nghe thấy như âm lượng tự tụt, vì giọng máy không đổi chất giọng khi nói nhỏ. Chỉ bật lại khi có giọng thì thầm thật.
 - **Màu giọng** (`delivery.fx`): ấm phần trầm, bớt chói phần cao, thêm chút vang phòng nhỏ. Hiệu ứng này áp lúc hoàn thiện lời dẫn và không làm đổi độ dài file.
+- **Tinh chỉnh theo nghĩa câu** (`delivery.voice_director`): agy đọc lời dẫn đã chốt rồi đề xuất tốc độ và khoảng nghỉ cho từng câu trên nền `scripts/delivery.py`. Chữ phải giữ nguyên; tốc độ trong khoảng 0,8–1,1 và lệch tối đa 15% so với nền, khoảng nghỉ 0–2 giây, độ to vẫn bằng 0 dB. Đầu ra sai được thử lại một lần; vẫn sai thì dùng kế hoạch quy tắc của nhóm cảnh đó và ghi rõ trong `voice-direction.json`. Duyệt media vẫn dựa vào WAV thật, không dựa vào nhãn chỉ dẫn.
 - **Nhạc nền**: mỗi đoạn lời dẫn ghi `speech_end` (chỗ giọng dừng). Nhờ đó nền chỉ nhỏ xuống khi đang có tiếng nói và lớn dần lên trong các khoảng lặng. Tiếng động và nhịp hình cũng neo theo phần có tiếng nói.
 - **Thời lượng**: đọc có đạo diễn dài hơn, 1169 chữ mất 347 giây thay vì 299 giây. Brief kinh dị vì thế dùng tốc độ đã đo là 3,3 chữ/giây (đã tính khoảng lặng) để đặt số chữ mỗi cảnh.
 - Brief không có `delivery` (job cũ, video không phải kinh dị) vẫn đọc như trước, và bộ đệm giọng cũ vẫn dùng lại được.

@@ -47,6 +47,7 @@
   "en_seed": 42,
   "workflow_mode": "review",
   "render_concurrency": 4,
+  "render_segment_seconds": 120,
   "canonical_character": {
     "id": "channel-mascot",
     "content_ids": [

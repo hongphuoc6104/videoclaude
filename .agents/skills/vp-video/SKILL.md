@@ -15,4 +15,6 @@ Quyết định người dùng cần đúng phần/revision và phản hồi ngu
 
 Job content 3.0: dựng theo danh sách beats/images đã duyệt và timeline riêng Việt/Anh; không tự phát hiện ảnh phụ theo tên hoặc gán mốc giây cố định. Hỗ trợ hold/cut/fade/slide_left/zoom_in/zoom_out. Chữ minh họa đã nằm trong ảnh; không dựng thêm lớp từ vựng. Giữ phụ đề Việt theo quy trình. Chuyển động phóng gần phải được kiểm tra không cắt mất chữ; không tự thêm hiệu ứng ngoài kế hoạch.
 
+Bản dựng chia đoạn khoảng `render_segment_seconds` giây tại đầu cảnh, cache ở `runs/JOB/cache/render-parts/`, nối rồi ghép âm thanh một lần (xem mục “Dựng video theo đoạn” trong docs/workflow.md). Render blocked vì một đoạn lỗi: đọc log đoạn được nêu, sửa nguyên nhân rồi chạy lại; lần sau chỉ dựng đoạn thiếu. Một đoạn nhìn sai dù đầu vào không đổi: `python3 render_parts.py forget runs/JOB/revisions/render/N/render-parts.json --part K` để đặt riêng đoạn đó sang `rejected/`, rồi reject video và resume; chỉ đoạn K được dựng lại. Không xóa tay cache hay ghép file ngoài pipeline.
+
 Xuất qua workflow vào `video/<job>/` sau đủ ba quyết định hiện tại. Trả đường dẫn thật từ kết quả điều phối; không đoán revision hoặc dùng script dựng lại độc lập. Nếu xuất lỗi sau duyệt, resume để thử xuất lại, không duyệt giả lần nữa.

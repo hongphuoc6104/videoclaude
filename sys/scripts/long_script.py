@@ -242,4 +242,5 @@ def generate(root, b, revision, bhash, head, style, requests, previous, previous
         summaries.append({'scenes': name, 'summary': data['story_so_far']})
         tail = [{'scene_id': s['id'], **{field(lang): s.get(field(lang), '') for lang, _ in tracks(b)}} for s in data['scenes'][-2:]]
     return {'structured_output': merge(b, revision, bhash, plan, parts, requests), 'conversation_id': None,
-            'chunks': len(parts), 'reused_from': state['reused_from']}
+            'chunks': len(parts), 'reused_from': state['reused_from'],
+            'raw_revision_responses': [response for part in parts for response in part['revision_response']]}
