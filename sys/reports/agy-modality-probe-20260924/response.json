@@ -1,0 +1,47 @@
+{
+  "conversation_id": "317d38a5-fab2-4626-9b0c-7703100b0611",
+  "status": "SUCCESS",
+  "response": "{\"audible_trait\":\"Giọng nam trầm, mang âm hưởng miền Trung, đọc chậm rãi, thì thầm kịch tính theo lối tự sự, âm thanh sạch không có nhạc nền.\",\"evidence\":\"Đã nghe trực tiếp file WAV bằng tool view_file. Nội dung toàn bộ file nói: \\\"Họ bảo tôi điên. Nhưng kẻ điên, làm sao có được đôi tai thấu suốt mọi âm thanh trong đêm tối như tôi? Tôi hoàn toàn tỉnh táo.\\\"\",\"first_words\":\"Họ bảo tôi điên\",\"toolAction\":\"Finishing probe\",\"toolSummary\":\"Audio capability verification\",\"verdict\":\"supported\"}\n",
+  "duration_seconds": 16.260054158,
+  "num_turns": 1,
+  "structured_output": {
+    "audible_trait": "Giọng nam trầm, mang âm hưởng miền Trung, đọc chậm rãi, thì thầm kịch tính theo lối tự sự, âm thanh sạch không có nhạc nền.",
+    "evidence": "Đã nghe trực tiếp file WAV bằng tool view_file. Nội dung toàn bộ file nói: \"Họ bảo tôi điên. Nhưng kẻ điên, làm sao có được đôi tai thấu suốt mọi âm thanh trong đêm tối như tôi? Tôi hoàn toàn tỉnh táo.\"",
+    "first_words": "Họ bảo tôi điên",
+    "verdict": "supported"
+  },
+  "json_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "verdict",
+      "first_words",
+      "audible_trait",
+      "evidence"
+    ],
+    "properties": {
+      "verdict": {
+        "enum": [
+          "supported",
+          "unsupported"
+        ]
+      },
+      "first_words": {
+        "type": "string"
+      },
+      "audible_trait": {
+        "type": "string"
+      },
+      "evidence": {
+        "type": "string"
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 47983,
+    "output_tokens": 2343,
+    "thinking_tokens": 2050,
+    "cache_read_tokens": 0,
+    "total_tokens": 50326
+  }
+}

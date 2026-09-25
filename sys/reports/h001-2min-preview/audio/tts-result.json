@@ -1,0 +1,175 @@
+{
+  "voice": "pham-tuyen-gwen",
+  "label": "pham-tuyen-gwen",
+  "engine": {
+    "engine": "gwen",
+    "backend": "pytorch",
+    "precision": "bfloat16",
+    "device": "NVIDIA GeForce RTX 3050 Laptop GPU",
+    "batch_size": 1
+  },
+  "fallbacks": [],
+  "settings": {
+    "tts_engine": "gwen",
+    "tts_check_retries": 2,
+    "tts_voice": "pham-tuyen-gwen",
+    "tts_temperature": 0.65,
+    "tts_top_p": 0.95,
+    "tts_max_chars": 256,
+    "tts_scene_synthesis": true,
+    "tts_backend": "onnx",
+    "tts_precision": "fp32",
+    "tts_speed": 1.0,
+    "tts_device": "auto",
+    "tts_gpu_dtype": "float32",
+    "tts_batch_size": 6
+  },
+  "scenes": [
+    {
+      "scene_id": "SC01",
+      "mode": "per-sentence"
+    },
+    {
+      "scene_id": "SC02",
+      "mode": "per-sentence"
+    },
+    {
+      "scene_id": "SC03",
+      "mode": "per-sentence"
+    }
+  ],
+  "segments": [
+    {
+      "scene_id": "SC01",
+      "text": "Chiếc gương trong phòng số bảy bị úp chặt mặt vào tường.",
+      "path": "segment-000.wav",
+      "voiced": 3.03
+    },
+    {
+      "scene_id": "SC01",
+      "text": "Đúng hai giờ sáng, ba tiếng gõ khô khốc vang lên.",
+      "path": "segment-001.wav",
+      "voiced": 3.11
+    },
+    {
+      "scene_id": "SC01",
+      "text": "Nam mở cửa.",
+      "path": "segment-002.wav",
+      "voiced": 1.41
+    },
+    {
+      "scene_id": "SC01",
+      "text": "Hành lang trống không.",
+      "path": "segment-003.wav",
+      "voiced": 1.1
+    },
+    {
+      "scene_id": "SC01",
+      "text": "Cậu vừa dọn tới dãy trọ cuối hẻm, nơi bà chủ tránh nhìn vào mắt cậu khi trao chìa khóa.",
+      "path": "segment-004.wav",
+      "voiced": 5.06
+    },
+    {
+      "scene_id": "SC01",
+      "text": "Đêm đầu tiên ấy, Nam nghĩ mình nghe nhầm.",
+      "path": "segment-005.wav",
+      "voiced": 2.39
+    },
+    {
+      "scene_id": "SC01",
+      "text": "Nhưng sáng ra, chiếc gương vẫn úp mặt vào tường, còn từ mép khung gỗ có một góc giấy vàng nhô ra.",
+      "path": "segment-006.wav",
+      "voiced": 5.93
+    },
+    {
+      "scene_id": "SC01",
+      "text": "Nam kể lại từ buổi chiều cậu kéo vali vào hẻm.",
+      "path": "segment-007.wav",
+      "voiced": 2.81
+    },
+    {
+      "scene_id": "SC02",
+      "text": "Hồi đó tôi là sinh viên năm hai, túi tiền eo hẹp nên phải lùng sục khắp nơi để tìm chỗ ở rẻ.",
+      "path": "segment-008.wav",
+      "voiced": 6.06
+    },
+    {
+      "scene_id": "SC02",
+      "text": "Lần theo mẩu giấy dán trên cột điện, tôi kéo chiếc vali cũ rẽ sâu vào một con hẻm ngoằn ngoèo ở rìa thành phố.",
+      "path": "segment-009.wav",
+      "voiced": 6.74
+    },
+    {
+      "scene_id": "SC02",
+      "text": "Cuối hẻm là dãy nhà trọ hai tầng cũ kỹ, tường vôi vàng bong tróc từng mảng lớn như vảy cá.",
+      "path": "segment-010.wav",
+      "voiced": 6.06
+    },
+    {
+      "scene_id": "SC02",
+      "text": "Giữa trưa nắng gắt mà không gian ở đây lại vắng lặng khác thường.",
+      "path": "segment-011.wav",
+      "voiced": 3.32
+    },
+    {
+      "scene_id": "SC02",
+      "text": "Dãy nhà có hơn mười phòng, nhưng tất cả các phòng xung quanh đều im ỉm khóa ngoài bằng những sợi xích sắt rỉ sét.",
+      "path": "segment-012.wav",
+      "voiced": 7.03
+    },
+    {
+      "scene_id": "SC02",
+      "text": "Chỉ có tiếng gió lùa rít khe khẽ qua khe hẹp hành lang.",
+      "path": "segment-013.wav",
+      "voiced": 3.77
+    },
+    {
+      "scene_id": "SC02",
+      "text": "Tôi dừng lại trước cánh cửa sắt tầng trệt, tự hỏi vì sao một nơi thế này lại có phòng trống cho thuê.",
+      "path": "segment-014.wav",
+      "voiced": 5.18
+    },
+    {
+      "scene_id": "SC03",
+      "text": "Bà chủ trọ bước ra từ căn phòng tối ở tầng trệt, người thấp đậm, mặc bộ đồ hoa nhí đã sờn mép.",
+      "path": "segment-015.wav",
+      "voiced": 6.33
+    },
+    {
+      "scene_id": "SC03",
+      "text": "Khi tôi hỏi giá phòng số bảy ở cuối tầng hai, bà đưa ra một con số rẻ bất thường, chỉ bằng một phần ba so với những chỗ khác quanh trường.",
+      "path": "segment-016.wav",
+      "voiced": 8.3
+    },
+    {
+      "scene_id": "SC03",
+      "text": "Tôi mừng thầm trong bụng, vội vã đồng ý ngay mà không đắn đo.",
+      "path": "segment-017.wav",
+      "voiced": 3.56
+    },
+    {
+      "scene_id": "SC03",
+      "text": "Thế nhưng lúc trao chìa khóa, bà ấy lại có biểu hiện rất lạ.",
+      "path": "segment-018.wav",
+      "voiced": 3.36
+    },
+    {
+      "scene_id": "SC03",
+      "text": "Bà ấy tuyệt đối không nhìn vào mắt tôi một lần nào.",
+      "path": "segment-019.wav",
+      "voiced": 2.8
+    },
+    {
+      "scene_id": "SC03",
+      "text": "Ánh mắt bà cứ nhìn trệch xuống nền xi măng, rồi lại nhìn ra khoảng trống phía sau vai tôi.",
+      "path": "segment-020.wav",
+      "voiced": 5.12
+    },
+    {
+      "scene_id": "SC03",
+      "text": "Bàn tay bà run rẩy khi tháo chiếc chìa khóa số bảy đưa cho tôi, miệng lẩm bẩm dặn dò rồi vội vàng quay bước.",
+      "path": "segment-021.wav",
+      "voiced": 7.0
+    }
+  ]
+}

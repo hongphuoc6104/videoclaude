@@ -1,0 +1,64 @@
+{
+  "model": "Piper",
+  "backend": "ONNX CUDA",
+  "active_providers": [
+    "CUDAExecutionProvider",
+    "CPUExecutionProvider"
+  ],
+  "samples": [
+    {
+      "voice": "25hours_single-low",
+      "label": "25hours_single-low",
+      "passage": "tu_su",
+      "file": "piper-gpu-25hours_single-low-tu_su.wav",
+      "duration_seconds": 8.43,
+      "elapsed_seconds": 0.81,
+      "status": "ok"
+    },
+    {
+      "voice": "25hours_single-low",
+      "label": "25hours_single-low",
+      "passage": "hoi_hop",
+      "file": "piper-gpu-25hours_single-low-hoi_hop.wav",
+      "duration_seconds": 11.98,
+      "elapsed_seconds": 0.41,
+      "status": "ok"
+    },
+    {
+      "voice": "vais1000-medium",
+      "label": "vais1000-medium",
+      "passage": "tu_su",
+      "file": "piper-gpu-vais1000-medium-tu_su.wav",
+      "duration_seconds": 5.67,
+      "elapsed_seconds": 0.4,
+      "status": "ok"
+    },
+    {
+      "voice": "vais1000-medium",
+      "label": "vais1000-medium",
+      "passage": "hoi_hop",
+      "file": "piper-gpu-vais1000-medium-hoi_hop.wav",
+      "duration_seconds": 9.16,
+      "elapsed_seconds": 0.43,
+      "status": "ok"
+    },
+    {
+      "voice": "vivos-x_low",
+      "label": "vivos-x_low",
+      "passage": "tu_su",
+      "file": "piper-gpu-vivos-x_low-tu_su.wav",
+      "duration_seconds": 9.66,
+      "elapsed_seconds": 0.43,
+      "status": "ok"
+    },
+    {
+      "voice": "vivos-x_low",
+      "label": "vivos-x_low",
+      "passage": "hoi_hop",
+      "file": "piper-gpu-vivos-x_low-hoi_hop.wav",
+      "duration_seconds": 13.22,
+      "elapsed_seconds": 0.43,
+      "status": "ok"
+    }
+  ]
+}

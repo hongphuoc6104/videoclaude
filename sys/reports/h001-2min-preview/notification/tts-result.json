@@ -1,0 +1,41 @@
+{
+  "voice": "pham-tuyen-gwen",
+  "label": "pham-tuyen-gwen",
+  "engine": {
+    "engine": "gwen",
+    "backend": "pytorch",
+    "precision": "bfloat16",
+    "device": "NVIDIA GeForce RTX 3050 Laptop GPU",
+    "batch_size": 1
+  },
+  "fallbacks": [],
+  "settings": {
+    "tts_engine": "gwen",
+    "tts_check_retries": 2,
+    "tts_voice": "pham-tuyen-gwen",
+    "tts_temperature": 0.65,
+    "tts_top_p": 0.95,
+    "tts_max_chars": 256,
+    "tts_scene_synthesis": true,
+    "tts_backend": "onnx",
+    "tts_precision": "fp32",
+    "tts_speed": 1.0,
+    "tts_device": "auto",
+    "tts_gpu_dtype": "float32",
+    "tts_batch_size": 6
+  },
+  "scenes": [
+    {
+      "scene_id": "HELLO",
+      "mode": "scene"
+    }
+  ],
+  "segments": [
+    {
+      "scene_id": "HELLO",
+      "text": "Xin chào.",
+      "path": "segment-000.wav",
+      "voiced": 0.83
+    }
+  ]
+}

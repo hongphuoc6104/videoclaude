@@ -1,0 +1,60 @@
+{
+  "model": "Piper",
+  "backend": "ONNX CPU",
+  "samples": [
+    {
+      "voice": "25hours_single-low",
+      "label": "25hours_single-low",
+      "passage": "tu_su",
+      "file": "piper-25hours_single-low-tu_su.wav",
+      "duration_seconds": 7.6,
+      "elapsed_seconds": 0.54,
+      "status": "ok"
+    },
+    {
+      "voice": "25hours_single-low",
+      "label": "25hours_single-low",
+      "passage": "hoi_hop",
+      "file": "piper-25hours_single-low-hoi_hop.wav",
+      "duration_seconds": 13.02,
+      "elapsed_seconds": 0.6,
+      "status": "ok"
+    },
+    {
+      "voice": "vais1000-medium",
+      "label": "vais1000-medium",
+      "passage": "tu_su",
+      "file": "piper-vais1000-medium-tu_su.wav",
+      "duration_seconds": 5.7,
+      "elapsed_seconds": 0.55,
+      "status": "ok"
+    },
+    {
+      "voice": "vais1000-medium",
+      "label": "vais1000-medium",
+      "passage": "hoi_hop",
+      "file": "piper-vais1000-medium-hoi_hop.wav",
+      "duration_seconds": 9.21,
+      "elapsed_seconds": 0.73,
+      "status": "ok"
+    },
+    {
+      "voice": "vivos-x_low",
+      "label": "vivos-x_low",
+      "passage": "tu_su",
+      "file": "piper-vivos-x_low-tu_su.wav",
+      "duration_seconds": 9.36,
+      "elapsed_seconds": 0.51,
+      "status": "ok"
+    },
+    {
+      "voice": "vivos-x_low",
+      "label": "vivos-x_low",
+      "passage": "hoi_hop",
+      "file": "piper-vivos-x_low-hoi_hop.wav",
+      "duration_seconds": 13.47,
+      "elapsed_seconds": 0.6,
+      "status": "ok"
+    }
+  ]
+}

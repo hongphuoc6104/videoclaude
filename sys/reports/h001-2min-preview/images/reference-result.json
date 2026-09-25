@@ -1,0 +1,23 @@
+[
+  {
+    "path": "/home/hongphuoc/Desktop/videoclaude/sys/reports/h001-2min-preview/images/259e6252d7185ca3d1a092fcf4c911c5f75354e3b5aec730fee4060a2e4462b8.jpg",
+    "forge_id": "5d74fe08-5d89-487e-bc33-3fa27f3662a3",
+    "media_id": "5d74fe08-5d89-487e-bc33-3fa27f3662a3",
+    "before_submit": null,
+    "screenshot": null,
+    "technical_validation": {
+      "path": "/home/hongphuoc/Desktop/videoclaude/sys/reports/h001-2min-preview/images/259e6252d7185ca3d1a092fcf4c911c5f75354e3b5aec730fee4060a2e4462b8.jpg",
+      "sha256": "dfa77f6584e4e90e0c22d47e9b10a834c0202acff469eff1bdd79942be62a9f6",
+      "mimeType": "image/jpeg",
+      "extension": ".jpg",
+      "width": 1376,
+      "height": 768,
+      "ratio": "16:9",
+      "technicalValidation": "pass",
+      "visualReview": "pending"
+    },
+    "latency": 11.146,
+    "request_id": "H001_2M_REF_NAM",
+    "sha256": "dfa77f6584e4e90e0c22d47e9b10a834c0202acff469eff1bdd79942be62a9f6"
+  }
+]

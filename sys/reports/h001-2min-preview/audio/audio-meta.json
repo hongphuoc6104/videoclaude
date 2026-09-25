@@ -1,0 +1,174 @@
+{
+  "speech_seconds": 107.73602083333333,
+  "total_seconds": 120,
+  "segments": [
+    {
+      "scene_id": "SC01",
+      "text": "Chiếc gương trong phòng số bảy bị úp chặt mặt vào tường.",
+      "start": 0.0,
+      "end": 3.35,
+      "speech_end": 3.03
+    },
+    {
+      "scene_id": "SC01",
+      "text": "Đúng hai giờ sáng, ba tiếng gõ khô khốc vang lên.",
+      "start": 3.35,
+      "end": 6.96,
+      "speech_end": 6.46
+    },
+    {
+      "scene_id": "SC01",
+      "text": "Nam mở cửa.",
+      "start": 6.96,
+      "end": 8.91,
+      "speech_end": 8.37
+    },
+    {
+      "scene_id": "SC01",
+      "text": "Hành lang trống không.",
+      "start": 8.91,
+      "end": 10.140104166666667,
+      "speech_end": 10.01
+    },
+    {
+      "scene_id": "SC01",
+      "text": "Cậu vừa dọn tới dãy trọ cuối hẻm, nơi bà chủ tránh nhìn vào mắt cậu khi trao chìa khóa.",
+      "start": 10.140104166666667,
+      "end": 15.500104166666667,
+      "speech_end": 15.200104166666666
+    },
+    {
+      "scene_id": "SC01",
+      "text": "Đêm đầu tiên ấy, Nam nghĩ mình nghe nhầm.",
+      "start": 15.500104166666667,
+      "end": 18.230104166666667,
+      "speech_end": 17.890104166666667
+    },
+    {
+      "scene_id": "SC01",
+      "text": "Nhưng sáng ra, chiếc gương vẫn úp mặt vào tường, còn từ mép khung gỗ có một góc giấy vàng nhô ra.",
+      "start": 18.230104166666667,
+      "end": 24.640104166666667,
+      "speech_end": 24.160104166666667
+    },
+    {
+      "scene_id": "SC01",
+      "text": "Nam kể lại từ buổi chiều cậu kéo vali vào hẻm.",
+      "start": 24.640104166666667,
+      "end": 28.49010416666667,
+      "speech_end": 27.450104166666666
+    },
+    {
+      "scene_id": "SC02",
+      "text": "Hồi đó tôi là sinh viên năm hai, túi tiền eo hẹp nên phải lùng sục khắp nơi để tìm chỗ ở rẻ.",
+      "start": 28.49010416666667,
+      "end": 34.790104166666666,
+      "speech_end": 34.55010416666667
+    },
+    {
+      "scene_id": "SC02",
+      "text": "Lần theo mẩu giấy dán trên cột điện, tôi kéo chiếc vali cũ rẽ sâu vào một con hẻm ngoằn ngoèo ở rìa thành phố.",
+      "start": 34.790104166666666,
+      "end": 41.6910625,
+      "speech_end": 41.53010416666667
+    },
+    {
+      "scene_id": "SC02",
+      "text": "Cuối hẻm là dãy nhà trọ hai tầng cũ kỹ, tường vôi vàng bong tróc từng mảng lớn như vảy cá.",
+      "start": 41.6910625,
+      "end": 47.9810625,
+      "speech_end": 47.7510625
+    },
+    {
+      "scene_id": "SC02",
+      "text": "Giữa trưa nắng gắt mà không gian ở đây lại vắng lặng khác thường.",
+      "start": 47.9810625,
+      "end": 51.5910625,
+      "speech_end": 51.3010625
+    },
+    {
+      "scene_id": "SC02",
+      "text": "Dãy nhà có hơn mười phòng, nhưng tất cả các phòng xung quanh đều im ỉm khóa ngoài bằng những sợi xích sắt rỉ sét.",
+      "start": 51.5910625,
+      "end": 58.7810625,
+      "speech_end": 58.6210625
+    },
+    {
+      "scene_id": "SC02",
+      "text": "Chỉ có tiếng gió lùa rít khe khẽ qua khe hẹp hành lang.",
+      "start": 58.7810625,
+      "end": 62.8210625,
+      "speech_end": 62.5510625
+    },
+    {
+      "scene_id": "SC02",
+      "text": "Tôi dừng lại trước cánh cửa sắt tầng trệt, tự hỏi vì sao một nơi thế này lại có phòng trống cho thuê.",
+      "start": 62.8210625,
+      "end": 68.42106249999999,
+      "speech_end": 68.00106249999999
+    },
+    {
+      "scene_id": "SC03",
+      "text": "Bà chủ trọ bước ra từ căn phòng tối ở tầng trệt, người thấp đậm, mặc bộ đồ hoa nhí đã sờn mép.",
+      "start": 68.42106249999999,
+      "end": 74.94604166666666,
+      "speech_end": 74.75106249999999
+    },
+    {
+      "scene_id": "SC03",
+      "text": "Khi tôi hỏi giá phòng số bảy ở cuối tầng hai, bà đưa ra một con số rẻ bất thường, chỉ bằng một phần ba so với những chỗ khác quanh trường.",
+      "start": 74.94604166666666,
+      "end": 83.40604166666665,
+      "speech_end": 83.24604166666666
+    },
+    {
+      "scene_id": "SC03",
+      "text": "Tôi mừng thầm trong bụng, vội vã đồng ý ngay mà không đắn đo.",
+      "start": 83.40604166666665,
+      "end": 87.42604166666665,
+      "speech_end": 86.96604166666665
+    },
+    {
+      "scene_id": "SC03",
+      "text": "Thế nhưng lúc trao chìa khóa, bà ấy lại có biểu hiện rất lạ.",
+      "start": 87.42604166666665,
+      "end": 90.98604166666665,
+      "speech_end": 90.78604166666665
+    },
+    {
+      "scene_id": "SC03",
+      "text": "Bà ấy tuyệt đối không nhìn vào mắt tôi một lần nào.",
+      "start": 90.98604166666665,
+      "end": 94.04604166666665,
+      "speech_end": 93.78604166666665
+    },
+    {
+      "scene_id": "SC03",
+      "text": "Ánh mắt bà cứ nhìn trệch xuống nền xi măng, rồi lại nhìn ra khoảng trống phía sau vai tôi.",
+      "start": 94.04604166666665,
+      "end": 99.63604166666666,
+      "speech_end": 99.16604166666666
+    },
+    {
+      "scene_id": "SC03",
+      "text": "Bàn tay bà run rẩy khi tháo chiếc chìa khóa số bảy đưa cho tôi, miệng lẩm bẩm dặn dò rồi vội vàng quay bước.",
+      "start": 99.63604166666666,
+      "end": 107.73602083333333,
+      "speech_end": 106.63604166666666
+    }
+  ],
+  "sound": [
+    {
+      "id": "pulse",
+      "kind": "bed",
+      "title": "Drone with slow heartbeat",
+      "license": "CC0-1.0",
+      "author": "Video Pilot (procedurally generated by sound.py)",
+      "source": "generated",
+      "generator": {
+        "name": "pulse",
+        "seed": 37
+      }
+    }
+  ]
+}

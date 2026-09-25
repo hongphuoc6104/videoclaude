@@ -1,0 +1,147 @@
+{
+  "settings": {
+    "tts_engine": "gwen",
+    "tts_check_retries": 2,
+    "tts_voice": "pham-tuyen-gwen",
+    "tts_temperature": 0.65,
+    "tts_top_p": 0.95,
+    "tts_max_chars": 256,
+    "tts_scene_synthesis": true,
+    "tts_backend": "onnx",
+    "tts_precision": "fp32",
+    "tts_speed": 1.0,
+    "tts_device": "auto",
+    "tts_gpu_dtype": "float32",
+    "tts_batch_size": 6
+  },
+  "cache_dir": "/home/hongphuoc/Desktop/videoclaude/sys/reports/h001-2min-preview/audio/cache",
+  "scenes": [
+    {
+      "scene_id": "SC01",
+      "narration": "Chiếc gương trong phòng số bảy bị úp chặt mặt vào tường. Đúng hai giờ sáng, ba tiếng gõ khô khốc vang lên. Nam mở cửa. Hành lang trống không. Cậu vừa dọn tới dãy trọ cuối hẻm, nơi bà chủ tránh nhìn vào mắt cậu khi trao chìa khóa. Đêm đầu tiên ấy, Nam nghĩ mình nghe nhầm. Nhưng sáng ra, chiếc gương vẫn úp mặt vào tường, còn từ mép khung gỗ có một góc giấy vàng nhô ra. Nam kể lại từ buổi chiều cậu kéo vali vào hẻm.",
+      "texts": [
+        "Chiếc gương trong phòng số bảy bị úp chặt mặt vào tường.",
+        "Đúng hai giờ sáng, ba tiếng gõ khô khốc vang lên.",
+        "Nam mở cửa.",
+        "Hành lang trống không.",
+        "Cậu vừa dọn tới dãy trọ cuối hẻm, nơi bà chủ tránh nhìn vào mắt cậu khi trao chìa khóa.",
+        "Đêm đầu tiên ấy, Nam nghĩ mình nghe nhầm.",
+        "Nhưng sáng ra, chiếc gương vẫn úp mặt vào tường, còn từ mép khung gỗ có một góc giấy vàng nhô ra.",
+        "Nam kể lại từ buổi chiều cậu kéo vali vào hẻm."
+      ],
+      "retake": 0,
+      "speeds": [
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        0.9,
+        0.9
+      ],
+      "gains": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gaps": [
+        0.7,
+        0.7,
+        0.7,
+        0.7,
+        0.7,
+        0.7,
+        0.7
+      ],
+      "tail": 1.4
+    },
+    {
+      "scene_id": "SC02",
+      "narration": "Hồi đó tôi là sinh viên năm hai, túi tiền eo hẹp nên phải lùng sục khắp nơi để tìm chỗ ở rẻ. Lần theo mẩu giấy dán trên cột điện, tôi kéo chiếc vali cũ rẽ sâu vào một con hẻm ngoằn ngoèo ở rìa thành phố. Cuối hẻm là dãy nhà trọ hai tầng cũ kỹ, tường vôi vàng bong tróc từng mảng lớn như vảy cá. Giữa trưa nắng gắt mà không gian ở đây lại vắng lặng khác thường. Dãy nhà có hơn mười phòng, nhưng tất cả các phòng xung quanh đều im ỉm khóa ngoài bằng những sợi xích sắt rỉ sét. Chỉ có tiếng gió lùa rít khe khẽ qua khe hẹp hành lang. Tôi dừng lại trước cánh cửa sắt tầng trệt, tự hỏi vì sao một nơi thế này lại có phòng trống cho thuê.",
+      "texts": [
+        "Hồi đó tôi là sinh viên năm hai, túi tiền eo hẹp nên phải lùng sục khắp nơi để tìm chỗ ở rẻ.",
+        "Lần theo mẩu giấy dán trên cột điện, tôi kéo chiếc vali cũ rẽ sâu vào một con hẻm ngoằn ngoèo ở rìa thành phố.",
+        "Cuối hẻm là dãy nhà trọ hai tầng cũ kỹ, tường vôi vàng bong tróc từng mảng lớn như vảy cá.",
+        "Giữa trưa nắng gắt mà không gian ở đây lại vắng lặng khác thường.",
+        "Dãy nhà có hơn mười phòng, nhưng tất cả các phòng xung quanh đều im ỉm khóa ngoài bằng những sợi xích sắt rỉ sét.",
+        "Chỉ có tiếng gió lùa rít khe khẽ qua khe hẹp hành lang.",
+        "Tôi dừng lại trước cánh cửa sắt tầng trệt, tự hỏi vì sao một nơi thế này lại có phòng trống cho thuê."
+      ],
+      "retake": 0,
+      "speeds": [
+        0.88,
+        0.88,
+        0.88,
+        0.88,
+        0.88,
+        0.88,
+        0.88
+      ],
+      "gains": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gaps": [
+        0.65,
+        0.65,
+        0.65,
+        0.65,
+        0.65,
+        0.65
+      ],
+      "tail": 1.1
+    },
+    {
+      "scene_id": "SC03",
+      "narration": "Bà chủ trọ bước ra từ căn phòng tối ở tầng trệt, người thấp đậm, mặc bộ đồ hoa nhí đã sờn mép. Khi tôi hỏi giá phòng số bảy ở cuối tầng hai, bà đưa ra một con số rẻ bất thường, chỉ bằng một phần ba so với những chỗ khác quanh trường. Tôi mừng thầm trong bụng, vội vã đồng ý ngay mà không đắn đo. Thế nhưng lúc trao chìa khóa, bà ấy lại có biểu hiện rất lạ. Bà ấy tuyệt đối không nhìn vào mắt tôi một lần nào. Ánh mắt bà cứ nhìn trệch xuống nền xi măng, rồi lại nhìn ra khoảng trống phía sau vai tôi. Bàn tay bà run rẩy khi tháo chiếc chìa khóa số bảy đưa cho tôi, miệng lẩm bẩm dặn dò rồi vội vàng quay bước.",
+      "texts": [
+        "Bà chủ trọ bước ra từ căn phòng tối ở tầng trệt, người thấp đậm, mặc bộ đồ hoa nhí đã sờn mép.",
+        "Khi tôi hỏi giá phòng số bảy ở cuối tầng hai, bà đưa ra một con số rẻ bất thường, chỉ bằng một phần ba so với những chỗ khác quanh trường.",
+        "Tôi mừng thầm trong bụng, vội vã đồng ý ngay mà không đắn đo.",
+        "Thế nhưng lúc trao chìa khóa, bà ấy lại có biểu hiện rất lạ.",
+        "Bà ấy tuyệt đối không nhìn vào mắt tôi một lần nào.",
+        "Ánh mắt bà cứ nhìn trệch xuống nền xi măng, rồi lại nhìn ra khoảng trống phía sau vai tôi.",
+        "Bàn tay bà run rẩy khi tháo chiếc chìa khóa số bảy đưa cho tôi, miệng lẩm bẩm dặn dò rồi vội vàng quay bước."
+      ],
+      "retake": 0,
+      "speeds": [
+        0.88,
+        0.88,
+        0.88,
+        0.88,
+        0.88,
+        0.88,
+        0.88
+      ],
+      "gains": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gaps": [
+        0.65,
+        0.65,
+        0.65,
+        0.65,
+        0.65,
+        0.65
+      ],
+      "tail": 1.1
+    }
+  ]
+}

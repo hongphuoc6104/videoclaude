@@ -1,0 +1,65 @@
+[
+  {
+    "path": "/home/hongphuoc/Desktop/videoclaude/sys/reports/h001-2min-preview/images/560be99e99526dbc43ab4870d0f8e22dcbcf94b55b352f1f19db4c529d0001e2.jpg",
+    "forge_id": "1d9da03e-0e97-4b56-a7f5-aeb2775a5aba",
+    "media_id": "1d9da03e-0e97-4b56-a7f5-aeb2775a5aba",
+    "before_submit": null,
+    "screenshot": null,
+    "technical_validation": {
+      "path": "/home/hongphuoc/Desktop/videoclaude/sys/reports/h001-2min-preview/images/560be99e99526dbc43ab4870d0f8e22dcbcf94b55b352f1f19db4c529d0001e2.jpg",
+      "sha256": "86337ffac1d551d516567f75267bda75d34d1952b03b3cbbed38f8e041ff2f8e",
+      "mimeType": "image/jpeg",
+      "extension": ".jpg",
+      "width": 1376,
+      "height": 768,
+      "ratio": "16:9",
+      "technicalValidation": "pass",
+      "visualReview": "pending"
+    },
+    "latency": 14.48,
+    "request_id": "H001_2M_SC01_I1",
+    "sha256": "86337ffac1d551d516567f75267bda75d34d1952b03b3cbbed38f8e041ff2f8e"
+  },
+  {
+    "path": "/home/hongphuoc/Desktop/videoclaude/sys/reports/h001-2min-preview/images/40550c71afceea44280fcf3412e55be0a61f61aa2a53d80dc2cd3ce2b7220bd2.jpg",
+    "forge_id": "895cf70b-1ac3-4103-b326-f509909e13cb",
+    "media_id": "895cf70b-1ac3-4103-b326-f509909e13cb",
+    "before_submit": null,
+    "screenshot": null,
+    "technical_validation": {
+      "path": "/home/hongphuoc/Desktop/videoclaude/sys/reports/h001-2min-preview/images/40550c71afceea44280fcf3412e55be0a61f61aa2a53d80dc2cd3ce2b7220bd2.jpg",
+      "sha256": "d7d635fac147c55c3d88f1741f950ad09bb9170c64e8a2f494a926dd9dc73f87",
+      "mimeType": "image/jpeg",
+      "extension": ".jpg",
+      "width": 1376,
+      "height": 768,
+      "ratio": "16:9",
+      "technicalValidation": "pass",
+      "visualReview": "pending"
+    },
+    "latency": 14.567,
+    "request_id": "H001_2M_SC02_I1",
+    "sha256": "d7d635fac147c55c3d88f1741f950ad09bb9170c64e8a2f494a926dd9dc73f87"
+  },
+  {
+    "path": "/home/hongphuoc/Desktop/videoclaude/sys/reports/h001-2min-preview/images/08849e6a28945cfdfb25ad8499fe468cbc1f4399dc23c26ef086870ca19473ef.jpg",
+    "forge_id": "19bd71bb-5243-4a03-8d39-08dc514b6104",
+    "media_id": "19bd71bb-5243-4a03-8d39-08dc514b6104",
+    "before_submit": null,
+    "screenshot": null,
+    "technical_validation": {
+      "path": "/home/hongphuoc/Desktop/videoclaude/sys/reports/h001-2min-preview/images/08849e6a28945cfdfb25ad8499fe468cbc1f4399dc23c26ef086870ca19473ef.jpg",
+      "sha256": "6ddefb05ecf240f1b566c335e134686a9741ec99a5f3510291c5ec252872acb4",
+      "mimeType": "image/jpeg",
+      "extension": ".jpg",
+      "width": 1376,
+      "height": 768,
+      "ratio": "16:9",
+      "technicalValidation": "pass",
+      "visualReview": "pending"
+    },
+    "latency": 14.645,
+    "request_id": "H001_2M_SC03_I1",
+    "sha256": "6ddefb05ecf240f1b566c335e134686a9741ec99a5f3510291c5ec252872acb4"
+  }
+]

@@ -1,0 +1,150 @@
+{
+  "model": "ZeroTTS",
+  "backend": "ONNX CPU FP32",
+  "samples": [
+    {
+      "voice": "baotrang",
+      "label": "Bảo Trang",
+      "passage": "tu_su",
+      "file": "zerotts-baotrang-tu_su.wav",
+      "duration_seconds": 6.48,
+      "elapsed_seconds": 6.37,
+      "status": "ok"
+    },
+    {
+      "voice": "baotrang",
+      "label": "Bảo Trang",
+      "passage": "hoi_hop",
+      "file": "zerotts-baotrang-hoi_hop.wav",
+      "duration_seconds": 10.08,
+      "elapsed_seconds": 10.27,
+      "status": "ok"
+    },
+    {
+      "voice": "giahuy",
+      "label": "Gia Huy",
+      "passage": "tu_su",
+      "file": "zerotts-giahuy-tu_su.wav",
+      "duration_seconds": 7.28,
+      "elapsed_seconds": 7.23,
+      "status": "ok"
+    },
+    {
+      "voice": "giahuy",
+      "label": "Gia Huy",
+      "passage": "hoi_hop",
+      "file": "zerotts-giahuy-hoi_hop.wav",
+      "duration_seconds": 11.2,
+      "elapsed_seconds": 10.74,
+      "status": "ok"
+    },
+    {
+      "voice": "hamy",
+      "label": "Hà My",
+      "passage": "tu_su",
+      "file": "zerotts-hamy-tu_su.wav",
+      "duration_seconds": 8.64,
+      "elapsed_seconds": 7.87,
+      "status": "ok"
+    },
+    {
+      "voice": "hamy",
+      "label": "Hà My",
+      "passage": "hoi_hop",
+      "file": "zerotts-hamy-hoi_hop.wav",
+      "duration_seconds": 14.48,
+      "elapsed_seconds": 15.39,
+      "status": "ok"
+    },
+    {
+      "voice": "huuduc",
+      "label": "Hữu Đức",
+      "passage": "tu_su",
+      "file": "zerotts-huuduc-tu_su.wav",
+      "duration_seconds": 7.04,
+      "elapsed_seconds": 7.66,
+      "status": "ok"
+    },
+    {
+      "voice": "huuduc",
+      "label": "Hữu Đức",
+      "passage": "hoi_hop",
+      "file": "zerotts-huuduc-hoi_hop.wav",
+      "duration_seconds": 11.52,
+      "elapsed_seconds": 13.33,
+      "status": "ok"
+    },
+    {
+      "voice": "kimoanh",
+      "label": "Kim Oanh",
+      "passage": "tu_su",
+      "file": "zerotts-kimoanh-tu_su.wav",
+      "duration_seconds": 9.12,
+      "elapsed_seconds": 10.79,
+      "status": "ok"
+    },
+    {
+      "voice": "kimoanh",
+      "label": "Kim Oanh",
+      "passage": "hoi_hop",
+      "file": "zerotts-kimoanh-hoi_hop.wav",
+      "duration_seconds": 11.76,
+      "elapsed_seconds": 12.78,
+      "status": "ok"
+    },
+    {
+      "voice": "maichi",
+      "label": "Mai Chi",
+      "passage": "tu_su",
+      "file": "zerotts-maichi-tu_su.wav",
+      "duration_seconds": 7.6,
+      "elapsed_seconds": 0.0,
+      "status": "ok"
+    },
+    {
+      "voice": "maichi",
+      "label": "Mai Chi",
+      "passage": "hoi_hop",
+      "file": "zerotts-maichi-hoi_hop.wav",
+      "duration_seconds": 9.92,
+      "elapsed_seconds": 10.5,
+      "status": "ok"
+    },
+    {
+      "voice": "quangminh",
+      "label": "Quang Minh",
+      "passage": "tu_su",
+      "file": "zerotts-quangminh-tu_su.wav",
+      "duration_seconds": 5.92,
+      "elapsed_seconds": 5.84,
+      "status": "ok"
+    },
+    {
+      "voice": "quangminh",
+      "label": "Quang Minh",
+      "passage": "hoi_hop",
+      "file": "zerotts-quangminh-hoi_hop.wav",
+      "duration_seconds": 9.28,
+      "elapsed_seconds": 9.73,
+      "status": "ok"
+    },
+    {
+      "voice": "tiendat",
+      "label": "Tiến Đạt",
+      "passage": "tu_su",
+      "file": "zerotts-tiendat-tu_su.wav",
+      "duration_seconds": 6.32,
+      "elapsed_seconds": 6.37,
+      "status": "ok"
+    },
+    {
+      "voice": "tiendat",
+      "label": "Tiến Đạt",
+      "passage": "hoi_hop",
+      "file": "zerotts-tiendat-hoi_hop.wav",
+      "duration_seconds": 9.92,
+      "elapsed_seconds": 10.75,
+      "status": "ok"
+    }
+  ]
+}

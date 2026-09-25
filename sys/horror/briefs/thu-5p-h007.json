@@ -1,0 +1,104 @@
+{
+  "schema_version": "3.0",
+  "topic": "Truyện kinh dị hư cấu: Nhịp tim dưới sàn gỗ",
+  "audience": "Người lớn Việt Nam thích nghe truyện kinh dị hư cấu, rùng rợn nhưng không máu me; kênh không dành cho trẻ em",
+  "goal": "Người nghe bị cuốn theo truyện \"Nhịp tim dưới sàn gỗ\" từ câu đầu tới câu cuối và thấy rợn người mà không cần máu me",
+  "video_type": "horror_story",
+  "duration": {
+    "min_seconds": 240,
+    "max_seconds": 360
+  },
+  "scene_count": 10,
+  "required_points": [
+    {
+      "id": "R1",
+      "text": "Người dẫn chuyện mở đầu bằng một câu móc gợi tò mò và nói rõ đây là truyện hư cấu"
+    },
+    {
+      "id": "R2",
+      "text": "Dựng bối cảnh và nhân vật chính đời thường, gần gũi: Người kể một mực nói mình tỉnh táo, rồi kể vì sao không chịu nổi con mắt đục của ông chủ nhà. Bối cảnh: Một căn nhà gỗ cũ, người kể là kẻ ở trọ"
+    },
+    {
+      "id": "R3",
+      "text": "Leo thang ít nhất ba điềm lạ, điềm sau căng hơn điềm trước: Người kể rình ông già nhiều đêm liền; Ông già biến mất, sàn gỗ được đóng lại phẳng phiu; Khách tới hỏi thăm, người kể nghe một tiếng đập đều mỗi lúc một to"
+    },
+    {
+      "id": "R4",
+      "text": "Cao trào và cú lật: Tiếng đập chỉ mình người kể nghe thấy, và chính cậu ta gào lên thú nhận; ông già ra sao không được tả, chỉ để lại tiếng tim"
+    },
+    {
+      "id": "R5",
+      "text": "Kết truyện để lại dư âm, không giải thích quá mức điều bí ẩn"
+    },
+    {
+      "id": "R6",
+      "text": "Người dẫn chuyện khép lại, nhắc đây là truyện hư cấu và mời người xem kể cảm nhận; không kêu gọi thử làm theo bất cứ điều gì"
+    }
+  ],
+  "language": "vi",
+  "tone": "trầm, chậm rãi, rùng rợn tăng dần, gần gũi như kể bên ánh đèn; bức bối, ngột ngạt, nghi ngờ; người nghe không chắc điều gì là thật",
+  "style": "Dark 2D horror illustration, comic-book inking with cold desaturated palette, deep shadows and a single warm light source, eerie mood built from darkness, empty space and small wrong details, no gore, no blood",
+  "aspect_ratio": "16:9",
+  "facts_required": false,
+  "sources": [],
+  "planning": {
+    "success_criteria": [
+      "Người nghe nhớ được ba điềm lạ và cú lật của truyện",
+      "Không có chi tiết máu me, nghi lễ làm theo được hay địa danh có thật",
+      "Xem hết video từ đầu đến cuối"
+    ],
+    "avoid": [
+      "Nêu hoặc ám chỉ người, địa danh, vụ án hay sự kiện có thật; không gắn nhãn ma ám cho bất kỳ địa điểm có thật nào",
+      "Khẳng định hay gợi ý câu chuyện là có thật",
+      "Hướng dẫn nghi lễ, gọi hồn, bùa chú, thách đố hay bất kỳ việc gì người xem có thể làm theo",
+      "Máu me, mô tả vết thương chi tiết, mô tả phương thức tự tử hoặc tự hại",
+      "Xúc phạm tôn giáo, tín ngưỡng, dân tộc; biến bệnh tâm thần hay người khuyết tật thành thứ đáng sợ",
+      "Chép câu chữ của bất kỳ bản in hay bản dịch nào; chỉ mượn mô-típ rồi kể lại hoàn toàn bằng lời mới",
+      "Nội dung nhắm tới trẻ em"
+    ],
+    "prior_knowledge": "Không cần kiến thức trước; người nghe có thể vừa làm việc khác vừa nghe",
+    "pacing": "Mở nhanh bằng một câu móc; giữa truyện chậm lại để dựng không khí; mỗi điềm lạ sau căng hơn điềm trước; cao trào ngắn và dứt khoát. Xen kẽ đời thường và khoảnh khắc lệch; nhân vật tự giải thích rồi tự nghi; cú lật đổi cách hiểu toàn bộ; kết mở",
+    "domain_requirements": [
+      "Mọi tên người và địa danh trong truyện đều hư cấu; bối cảnh tả chung (một làng ven sông, một dãy trọ cuối hẻm), không dùng tên tỉnh, thành phố hay địa điểm có thật",
+      "Người dẫn chuyện là nhân vật đại diện kênh (người que áo xanh biển nhạt #8CCFE8), chỉ xuất hiện ở cảnh mở đầu và cảnh kết; các cảnh trong truyện dùng nhân vật riêng của truyện, không vẽ người que",
+      "Sợ bằng không khí: bóng tối, âm thanh được kể lại, chi tiết sai lệch nhỏ; không cảnh máu hay xác",
+      "Cảnh mở đầu nói rõ đây là truyện hư cấu; cảnh kết nhắc lại điều đó",
+      "Người dẫn chuyện: Người dẫn chuyện (mã nhân vật channel-mascot) — Người que đầu tròn trắng viền xanh đen đậm, hai mắt oval đen, tay chân người que tối giản; Áo thun cộc tay màu xanh biển nhạt (#8CCFE8)",
+      "Thể loại: tâm lý tội lỗi",
+      "Không khí (mood): psychological — Ám ảnh tâm lý — nhân vật nghi chính mình, kết mở",
+      "Ngôi kể: Người dẫn chuyện mở ở cảnh đầu, giới thiệu người kể rồi nhường lời. Từ cảnh thứ hai tới cảnh áp chót, nhân vật chính xưng \"tôi\" kể lại chuyện của mình. Cảnh cuối người dẫn chuyện nói lại.",
+      "Nguồn cảm hứng: The Tell-Tale Heart — Edgar Allan Poe (1843), tác phẩm đã hết bảo hộ. Chỉ mượn mô-típ, kể lại hoàn toàn bằng lời mới. Mượn mô-típ người kể không đáng tin và tiếng tim tưởng tượng; không tả hành vi giết người",
+      "Mã hạt giống truyện: H007 (dùng để đánh dấu đã làm)"
+    ],
+    "assumptions": [
+      "Tiêu chí ban đầu lấy từ hạt giống; cần kiểm tra khi duyệt kịch bản.",
+      "Tốc độ giọng là ước lượng ban đầu, chưa phải số đo hiệu chỉnh."
+    ],
+    "text_style": {
+      "font": "Serif cổ điển hơi nhòe, cùng kiểu và độ đậm xuyên suốt",
+      "color": "#EDE6D6",
+      "outline": "Viền tối mờ để nổi trên nền đêm",
+      "size": "Vừa, đọc rõ trên điện thoại và TV",
+      "placement": "Cách mép ít nhất 10%; tránh mặt nhân vật"
+    },
+    "speech_rates": {
+      "vi": {
+        "units_per_second": 3.6,
+        "uncertainty": 0.25,
+        "includes_pauses": false,
+        "source": "initial estimate; replace with measured voice rate"
+      },
+      "en": {
+        "units_per_second": 2.5,
+        "uncertainty": 0.25,
+        "includes_pauses": false,
+        "source": "initial estimate; replace with measured voice rate"
+      }
+    }
+  },
+  "audio_language": "vi",
+  "sound": {
+    "bed": "pulse",
+    "sfx": true
+  }
+}

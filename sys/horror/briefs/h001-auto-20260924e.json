@@ -1,0 +1,222 @@
+{
+  "schema_version": "3.0",
+  "topic": "Truyện kinh dị hư cấu: Tiếng gõ sau tấm gương",
+  "audience": "Người lớn Việt Nam thích nghe truyện kinh dị hư cấu, rùng rợn nhưng không máu me; kênh không dành cho trẻ em",
+  "goal": "Người nghe bị cuốn theo truyện \"Tiếng gõ sau tấm gương\" từ câu đầu tới câu cuối và thấy rợn người mà không cần máu me",
+  "video_type": "horror_story",
+  "duration": {
+    "min_seconds": 600,
+    "max_seconds": 900
+  },
+  "scene_count": 20,
+  "required_points": [
+    {
+      "id": "R1",
+      "text": "Người dẫn chuyện mở đầu bằng một câu móc gợi tò mò rồi nhường lời kể; không cần nói đây là truyện hư cấu (mô tả video ghi điều đó)"
+    },
+    {
+      "id": "R2",
+      "text": "Dựng bối cảnh và nhân vật chính đời thường, gần gũi: Một sinh viên thuê được phòng trọ rẻ bất thường; chủ nhà tránh nhìn vào mắt khi đưa chìa khóa. Bối cảnh: Một dãy phòng trọ cũ cuối con hẻm sâu ở một thành phố không tên"
+    },
+    {
+      "id": "R3",
+      "text": "Leo thang ít nhất ba điềm lạ, điềm sau căng hơn điềm trước: Tiếng gõ ba tiếng lúc hai giờ sáng nhưng hành lang trống; Tấm gương trong phòng bị treo úp mặt vào tường; Mặt sau tấm gương dán một tờ giấy vàng chữ đã mờ"
+    },
+    {
+      "id": "R4",
+      "text": "Cao trào và cú lật: Tiếng gõ không đến từ ngoài cửa mà từ phía sau tấm gương, và đêm nó gõ bốn tiếng là đang đếm thêm một người trong phòng"
+    },
+    {
+      "id": "R5",
+      "text": "Kết truyện để lại dư âm, không giải thích quá mức điều bí ẩn"
+    },
+    {
+      "id": "R6",
+      "text": "Người dẫn chuyện khép lại và mời người xem kể cảm nhận; không cần nhắc đây là truyện hư cấu; không kêu gọi thử làm theo bất cứ điều gì"
+    }
+  ],
+  "language": "vi",
+  "tone": "trầm, chậm rãi, rùng rợn tăng dần, gần gũi như kể bên ánh đèn; chậm rãi, thì thầm, rợn dần; nỗi sợ đến từ chi tiết nhỏ sai chỗ hơn là cú giật",
+  "style": "Dark 2D horror illustration, comic-book inking with cold desaturated palette, deep shadows and a single warm light source, eerie mood built from darkness, empty space and small wrong details, no gore, no blood",
+  "aspect_ratio": "16:9",
+  "facts_required": false,
+  "sources": [],
+  "planning": {
+    "success_criteria": [
+      "Người nghe nhớ được ba điềm lạ và cú lật của truyện",
+      "Không có chi tiết máu me, nghi lễ làm theo được hay địa danh có thật",
+      "Xem hết video từ đầu đến cuối"
+    ],
+    "avoid": [
+      "Nêu hoặc ám chỉ người, địa danh, vụ án hay sự kiện có thật; không gắn nhãn ma ám cho bất kỳ địa điểm có thật nào",
+      "Khẳng định hay gợi ý câu chuyện là có thật",
+      "Hướng dẫn nghi lễ, gọi hồn, bùa chú, thách đố hay bất kỳ việc gì người xem có thể làm theo",
+      "Máu me, mô tả vết thương chi tiết, mô tả phương thức tự tử hoặc tự hại",
+      "Xúc phạm tôn giáo, tín ngưỡng, dân tộc; biến bệnh tâm thần hay người khuyết tật thành thứ đáng sợ",
+      "Chép câu chữ của bất kỳ bản in hay bản dịch nào; chỉ mượn mô-típ rồi kể lại hoàn toàn bằng lời mới",
+      "Nội dung nhắm tới trẻ em"
+    ],
+    "prior_knowledge": "Không cần kiến thức trước; người nghe có thể vừa làm việc khác vừa nghe",
+    "pacing": "Mở nhanh bằng một câu móc; giữa truyện chậm lại để dựng không khí; mỗi điềm lạ sau căng hơn điềm trước; cao trào ngắn và dứt khoát. Dựng đời thường kỹ; điềm lạ nhỏ và cách xa nhau lúc đầu rồi dày dần; chỉ một cú giật ở cao trào; kết lặng",
+    "domain_requirements": [
+      "Mọi tên người và địa danh trong truyện đều hư cấu; bối cảnh tả chung (một làng ven sông, một dãy trọ cuối hẻm), không dùng tên tỉnh, thành phố hay địa điểm có thật",
+      "Người dẫn chuyện là nhân vật đại diện kênh (người que áo xanh biển nhạt #8CCFE8), chỉ xuất hiện ở cảnh mở đầu và cảnh kết; các cảnh trong truyện dùng nhân vật riêng của truyện, không vẽ người que",
+      "Sợ bằng không khí: bóng tối, âm thanh được kể lại, chi tiết sai lệch nhỏ; không cảnh máu hay xác",
+      "Người dẫn chuyện: Người dẫn chuyện (mã nhân vật channel-mascot) — Người que đầu tròn trắng viền xanh đen đậm, hai mắt oval đen, tay chân người que tối giản; Áo thun cộc tay màu xanh biển nhạt (#8CCFE8)",
+      "Thể loại: nhà trọ đô thị",
+      "Không khí (mood): slow_burn — Rợn chậm — không khí dồn dần, ít cú giật, sợ vì chi tiết nhỏ",
+      "Ngôi kể: Kể ngôi thứ ba, bám sát một nhân vật chính: chỉ biết điều nhân vật đó thấy, nghe, nghĩ. Người dẫn chuyện mở ở cảnh đầu và khép ở cảnh cuối.",
+      "Nguồn cảm hứng: truyện tự viết. Truyện tự viết cho kênh",
+      "Mã hạt giống truyện: H001 (dùng để đánh dấu đã làm)"
+    ],
+    "assumptions": [
+      "Tiêu chí ban đầu lấy từ hạt giống; cần kiểm tra khi duyệt kịch bản.",
+      "Tốc độ giọng là ước lượng ban đầu, chưa phải số đo hiệu chỉnh."
+    ],
+    "text_style": {
+      "font": "Serif cổ điển hơi nhòe, cùng kiểu và độ đậm xuyên suốt",
+      "color": "#EDE6D6",
+      "outline": "Viền tối mờ để nổi trên nền đêm",
+      "size": "Vừa, đọc rõ trên điện thoại và TV",
+      "placement": "Cách mép ít nhất 10%; tránh mặt nhân vật"
+    },
+    "speech_rates": {
+      "vi": {
+        "units_per_second": 3.3,
+        "uncertainty": 0.15,
+        "includes_pauses": true,
+        "source": "measured: directed Phạm Tuyên narration, thu-5p-h007g, 2026-09-23"
+      },
+      "en": {
+        "units_per_second": 2.5,
+        "uncertainty": 0.25,
+        "includes_pauses": false,
+        "source": "initial estimate; replace with measured voice rate"
+      }
+    },
+    "visual_density": {
+      "seconds_per_image": 10,
+      "seconds_per_beat": 6,
+      "tolerance": 1.3
+    }
+  },
+  "script_director": {
+    "enabled": true,
+    "max_rewrites": 2,
+    "min_each": 1,
+    "min_total": 10
+  },
+  "audio_language": "vi",
+  "sound": {
+    "bed": "drone",
+    "sfx": true
+  },
+  "delivery": {
+    "voice_director": {
+      "enabled": true,
+      "speed_min": 0.8,
+      "speed_max": 1.1,
+      "max_shift": 0.15,
+      "pause_max": 2.0,
+      "scenes_per_call": 6
+    },
+    "roles": {
+      "R1": "host_open",
+      "R2": "setup",
+      "R3": "rising",
+      "R4": "climax",
+      "R5": "aftermath",
+      "R6": "host_close"
+    },
+    "priority": [
+      "host_open",
+      "host_close",
+      "climax",
+      "rising",
+      "aftermath",
+      "setup"
+    ],
+    "styles": {
+      "host_open": {
+        "speed": 0.9,
+        "sentence": 0.7,
+        "minor": 0.3,
+        "tail": 1.4
+      },
+      "setup": {
+        "speed": 0.88,
+        "sentence": 0.65,
+        "minor": 0.3,
+        "tail": 1.1
+      },
+      "rising": {
+        "speed": 0.9,
+        "sentence": 0.7,
+        "minor": 0.3,
+        "tail": 1.4,
+        "tense": true
+      },
+      "climax": {
+        "speed": 1.0,
+        "sentence": 0.45,
+        "minor": 0.2,
+        "tail": 1.8,
+        "tense": true
+      },
+      "aftermath": {
+        "speed": 0.85,
+        "sentence": 0.85,
+        "minor": 0.35,
+        "tail": 1.5
+      },
+      "host_close": {
+        "speed": 0.88,
+        "sentence": 0.7,
+        "minor": 0.3,
+        "tail": 1.0
+      }
+    },
+    "end_tail": 1.2,
+    "moods": {
+      "slow_burn": {
+        "speed": 0.97,
+        "pause": 1.1
+      },
+      "psychological": {
+        "speed": 1.0,
+        "pause": 1.0
+      },
+      "folk": {
+        "speed": 0.96,
+        "pause": 1.1
+      },
+      "tense": {
+        "speed": 1.05,
+        "pause": 0.85
+      }
+    },
+    "lines": {
+      "beat_pause": 1.2,
+      "question_pause": 1.0,
+      "short": {
+        "max_words": 8,
+        "pause_before": 0.9,
+        "pause_after": 1.0
+      },
+      "dialogue": {
+        "pause_before": 0.55,
+        "inner": 0.3,
+        "pause_after": 0.9,
+        "gain_db": 0,
+        "shout_gain_db": 0
+      },
+      "reveal": {
+        "pause_before": 1.2,
+        "gain_db": 0,
+        "speed": 0.9
+      }
+    },
+    "fx": "bass=g=2.5:f=140,treble=g=-2:f=6000,aecho=0.8:0.4:55|95:0.14|0.08",
+    "mood": "slow_burn"
+  }
+}

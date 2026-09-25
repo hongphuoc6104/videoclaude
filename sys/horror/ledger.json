@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "seeds": {
+    "H007": {
+      "status": "reserved",
+      "job": "thu-5p-h007g",
+      "at": "2026-09-23 23:12:18",
+      "brief": "horror/briefs/thu-5p-h007g.json",
+      "choices": {
+        "aspect_ratio": "16:9",
+        "length": "4-6",
+        "mood": "seed",
+        "pov": "first",
+        "mode": "review"
+      }
+    },
+    "H001": {
+      "status": "reserved",
+      "job": "h001-auto-20260924g",
+      "at": "2026-09-24 22:50:15",
+      "brief": "horror/briefs/h001-auto-20260924g.json",
+      "choices": {
+        "aspect_ratio": "16:9",
+        "length": "10-15",
+        "mood": "seed",
+        "pov": "third",
+        "mode": "auto"
+      },
+      "handoff": {
+        "from": "h001-auto-20260924f",
+        "to": "h001-auto-20260924g",
+        "nonce": "1235b61e85dca09c5d70c81455a3d61e",
+        "lineage_hash": "dafc77d8e095477e50160813a17b11e3c44bcf0de9214ffc6313d6e320d4f588",
+        "state": "complete"
+      },
+      "superseded_from": "h001-auto-20260924f"
+    }
+  }
+}

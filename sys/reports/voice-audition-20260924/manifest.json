@@ -1,0 +1,514 @@
+{
+  "source": "/home/hongphuoc/Desktop/videoclaude/sys/runs/thu-5p-h007g/revisions/content/1/content.json",
+  "passages": {
+    "tu_su": "Họ bảo tôi điên. Nhưng kẻ điên làm sao có được đôi tai thấu suốt mọi âm thanh trong đêm tối như tôi? Tôi hoàn toàn tỉnh táo.",
+    "hoi_hop": "Đến đêm thứ tám, ngón tay tôi sẩy trượt làm nắp đèn kêu cạch một tiếng. Ông lão giật mình ngồi bật dậy trong bóng tối mịt mùng: “Ai đó?” Tôi nín thở, đứng chôn chân suốt một tiếng đồng hồ."
+  },
+  "engine": {
+    "model": "VieNeu v3 Turbo",
+    "backend": "PyTorch CUDA FP32",
+    "style": "Phong cách nằm trong giọng mẫu; tham số style bị bỏ qua trong vieneu 3.8.1"
+  },
+  "samples": [
+    {
+      "number": 1,
+      "voice": "Adam bựa",
+      "label": "⭐ Adam bựa — Nam · Bắc · Phong cách tự nhiên",
+      "passage": "tu_su",
+      "file": "01-tu_su.wav",
+      "duration_seconds": 7.44,
+      "elapsed_seconds": 2.22,
+      "status": "ok"
+    },
+    {
+      "number": 1,
+      "voice": "Adam bựa",
+      "label": "⭐ Adam bựa — Nam · Bắc · Phong cách tự nhiên",
+      "passage": "hoi_hop",
+      "file": "01-hoi_hop.wav",
+      "duration_seconds": 10.4,
+      "elapsed_seconds": 1.7,
+      "status": "ok"
+    },
+    {
+      "number": 2,
+      "voice": "Trúc Ly",
+      "label": "⭐ Trúc Ly — Nữ · Bắc · Phong cách tự nhiên",
+      "passage": "tu_su",
+      "file": "02-tu_su.wav",
+      "duration_seconds": 5.92,
+      "elapsed_seconds": 0.96,
+      "status": "ok"
+    },
+    {
+      "number": 2,
+      "voice": "Trúc Ly",
+      "label": "⭐ Trúc Ly — Nữ · Bắc · Phong cách tự nhiên",
+      "passage": "hoi_hop",
+      "file": "02-hoi_hop.wav",
+      "duration_seconds": 8.8,
+      "elapsed_seconds": 1.43,
+      "status": "ok"
+    },
+    {
+      "number": 3,
+      "voice": "Anh Khôi",
+      "label": "⭐ Anh Khôi — Nam · Bắc · Phong cách kể chuyện",
+      "passage": "tu_su",
+      "file": "03-tu_su.wav",
+      "duration_seconds": 6.56,
+      "elapsed_seconds": 1.06,
+      "status": "ok"
+    },
+    {
+      "number": 3,
+      "voice": "Anh Khôi",
+      "label": "⭐ Anh Khôi — Nam · Bắc · Phong cách kể chuyện",
+      "passage": "hoi_hop",
+      "file": "03-hoi_hop.wav",
+      "duration_seconds": 10.16,
+      "elapsed_seconds": 1.64,
+      "status": "ok"
+    },
+    {
+      "number": 4,
+      "voice": "Mai Anh",
+      "label": "⭐ Mai Anh — Nữ · Bắc · Phong cách tin tức",
+      "passage": "tu_su",
+      "file": "04-tu_su.wav",
+      "duration_seconds": 7.28,
+      "elapsed_seconds": 1.18,
+      "status": "ok"
+    },
+    {
+      "number": 4,
+      "voice": "Mai Anh",
+      "label": "⭐ Mai Anh — Nữ · Bắc · Phong cách tin tức",
+      "passage": "hoi_hop",
+      "file": "04-hoi_hop.wav",
+      "duration_seconds": 11.28,
+      "elapsed_seconds": 1.83,
+      "status": "ok"
+    },
+    {
+      "number": 5,
+      "voice": "Minh Quân Pro",
+      "label": "⭐ Minh Quân Pro — Nam · Bắc · Phong cách tự nhiên",
+      "passage": "tu_su",
+      "file": "05-tu_su.wav",
+      "duration_seconds": 6.56,
+      "elapsed_seconds": 1.06,
+      "status": "ok"
+    },
+    {
+      "number": 5,
+      "voice": "Minh Quân Pro",
+      "label": "⭐ Minh Quân Pro — Nam · Bắc · Phong cách tự nhiên",
+      "passage": "hoi_hop",
+      "file": "05-hoi_hop.wav",
+      "duration_seconds": 9.68,
+      "elapsed_seconds": 1.57,
+      "status": "ok"
+    },
+    {
+      "number": 6,
+      "voice": "Thùy Dung",
+      "label": "⭐ Thùy Dung — Nữ · Nam · Phong cách tin tức",
+      "passage": "tu_su",
+      "file": "06-tu_su.wav",
+      "duration_seconds": 5.68,
+      "elapsed_seconds": 0.94,
+      "status": "ok"
+    },
+    {
+      "number": 6,
+      "voice": "Thùy Dung",
+      "label": "⭐ Thùy Dung — Nữ · Nam · Phong cách tin tức",
+      "passage": "hoi_hop",
+      "file": "06-hoi_hop.wav",
+      "duration_seconds": 8.8,
+      "elapsed_seconds": 1.42,
+      "status": "ok"
+    },
+    {
+      "number": 7,
+      "voice": "Thiền Tâm Đức",
+      "label": "⭐ Thiền Tâm Đức — Nam · Bắc · Phong cách kể chuyện",
+      "passage": "tu_su",
+      "file": "07-tu_su.wav",
+      "duration_seconds": 8.96,
+      "elapsed_seconds": 1.45,
+      "status": "ok"
+    },
+    {
+      "number": 7,
+      "voice": "Thiền Tâm Đức",
+      "label": "⭐ Thiền Tâm Đức — Nam · Bắc · Phong cách kể chuyện",
+      "passage": "hoi_hop",
+      "file": "07-hoi_hop.wav",
+      "duration_seconds": 13.28,
+      "elapsed_seconds": 2.17,
+      "status": "ok"
+    },
+    {
+      "number": 8,
+      "voice": "Ngọc Huyền",
+      "label": "⭐ Ngọc Huyền — Nữ · Bắc · Giọng đọc tự nhiên",
+      "passage": "tu_su",
+      "file": "08-tu_su.wav",
+      "duration_seconds": 6.64,
+      "elapsed_seconds": 1.07,
+      "status": "ok"
+    },
+    {
+      "number": 8,
+      "voice": "Ngọc Huyền",
+      "label": "⭐ Ngọc Huyền — Nữ · Bắc · Giọng đọc tự nhiên",
+      "passage": "hoi_hop",
+      "file": "08-hoi_hop.wav",
+      "duration_seconds": 10.16,
+      "elapsed_seconds": 1.64,
+      "status": "ok"
+    },
+    {
+      "number": 9,
+      "voice": "Quang Sơn",
+      "label": "⭐ Quang Sơn — Nam · Trung · Phong cách tự nhiên",
+      "passage": "tu_su",
+      "file": "09-tu_su.wav",
+      "duration_seconds": 8.0,
+      "elapsed_seconds": 1.47,
+      "status": "ok"
+    },
+    {
+      "number": 9,
+      "voice": "Quang Sơn",
+      "label": "⭐ Quang Sơn — Nam · Trung · Phong cách tự nhiên",
+      "passage": "hoi_hop",
+      "file": "09-hoi_hop.wav",
+      "duration_seconds": 12.8,
+      "elapsed_seconds": 2.08,
+      "status": "ok"
+    },
+    {
+      "number": 10,
+      "voice": "Ngọc Trân",
+      "label": "⭐ Ngọc Trân — Nữ · Trung · Phong cách tự nhiên",
+      "passage": "tu_su",
+      "file": "10-tu_su.wav",
+      "duration_seconds": 8.48,
+      "elapsed_seconds": 1.25,
+      "status": "ok"
+    },
+    {
+      "number": 10,
+      "voice": "Ngọc Trân",
+      "label": "⭐ Ngọc Trân — Nữ · Trung · Phong cách tự nhiên",
+      "passage": "hoi_hop",
+      "file": "10-hoi_hop.wav",
+      "duration_seconds": 12.8,
+      "elapsed_seconds": 2.08,
+      "status": "ok"
+    },
+    {
+      "number": 11,
+      "voice": "Minh Đức",
+      "label": "Minh Đức — Nam · Bắc · Phong cách tin tức",
+      "passage": "tu_su",
+      "file": "11-tu_su.wav",
+      "duration_seconds": 8.8,
+      "elapsed_seconds": 1.29,
+      "status": "ok"
+    },
+    {
+      "number": 11,
+      "voice": "Minh Đức",
+      "label": "Minh Đức — Nam · Bắc · Phong cách tin tức",
+      "passage": "hoi_hop",
+      "file": "11-hoi_hop.wav",
+      "duration_seconds": 12.4,
+      "elapsed_seconds": 2.02,
+      "status": "ok"
+    },
+    {
+      "number": 12,
+      "voice": "Phạm Tuyên",
+      "label": "Phạm Tuyên — Nam · Bắc · Phong cách tự nhiên",
+      "passage": "tu_su",
+      "file": "12-tu_su.wav",
+      "duration_seconds": 7.12,
+      "elapsed_seconds": 1.15,
+      "status": "ok"
+    },
+    {
+      "number": 12,
+      "voice": "Phạm Tuyên",
+      "label": "Phạm Tuyên — Nam · Bắc · Phong cách tự nhiên",
+      "passage": "hoi_hop",
+      "file": "12-hoi_hop.wav",
+      "duration_seconds": 10.8,
+      "elapsed_seconds": 1.75,
+      "status": "ok"
+    },
+    {
+      "number": 13,
+      "voice": "Thái Sơn",
+      "label": "Thái Sơn — Nam · Nam · Phong cách kể chuyện",
+      "passage": "tu_su",
+      "file": "13-tu_su.wav",
+      "duration_seconds": 7.92,
+      "elapsed_seconds": 1.17,
+      "status": "ok"
+    },
+    {
+      "number": 13,
+      "voice": "Thái Sơn",
+      "label": "Thái Sơn — Nam · Nam · Phong cách kể chuyện",
+      "passage": "hoi_hop",
+      "file": "13-hoi_hop.wav",
+      "duration_seconds": 11.04,
+      "elapsed_seconds": 1.79,
+      "status": "ok"
+    },
+    {
+      "number": 14,
+      "voice": "Xuân Vĩnh",
+      "label": "Xuân Vĩnh — Nam · Bắc · Phong cách tự nhiên",
+      "passage": "tu_su",
+      "file": "14-tu_su.wav",
+      "duration_seconds": 6.48,
+      "elapsed_seconds": 0.95,
+      "status": "ok"
+    },
+    {
+      "number": 14,
+      "voice": "Xuân Vĩnh",
+      "label": "Xuân Vĩnh — Nam · Bắc · Phong cách tự nhiên",
+      "passage": "hoi_hop",
+      "file": "14-hoi_hop.wav",
+      "duration_seconds": 10.32,
+      "elapsed_seconds": 1.66,
+      "status": "ok"
+    },
+    {
+      "number": 15,
+      "voice": "Thanh Bình",
+      "label": "Thanh Bình — Nam · Bắc · Phong cách kể chuyện",
+      "passage": "tu_su",
+      "file": "15-tu_su.wav",
+      "duration_seconds": 6.48,
+      "elapsed_seconds": 0.95,
+      "status": "ok"
+    },
+    {
+      "number": 15,
+      "voice": "Thanh Bình",
+      "label": "Thanh Bình — Nam · Bắc · Phong cách kể chuyện",
+      "passage": "hoi_hop",
+      "file": "15-hoi_hop.wav",
+      "duration_seconds": 9.52,
+      "elapsed_seconds": 1.54,
+      "status": "ok"
+    },
+    {
+      "number": 16,
+      "voice": "Ngọc Linh",
+      "label": "Ngọc Linh — Nữ · Bắc · Phong cách kể chuyện",
+      "passage": "tu_su",
+      "file": "16-tu_su.wav",
+      "duration_seconds": 6.96,
+      "elapsed_seconds": 1.12,
+      "status": "ok"
+    },
+    {
+      "number": 16,
+      "voice": "Ngọc Linh",
+      "label": "Ngọc Linh — Nữ · Bắc · Phong cách kể chuyện",
+      "passage": "hoi_hop",
+      "file": "16-hoi_hop.wav",
+      "duration_seconds": 10.4,
+      "elapsed_seconds": 1.68,
+      "status": "ok"
+    },
+    {
+      "number": 17,
+      "voice": "Đoan Trang",
+      "label": "Đoan Trang — Nữ · Bắc · Phong cách tự nhiên",
+      "passage": "tu_su",
+      "file": "17-tu_su.wav",
+      "duration_seconds": 7.2,
+      "elapsed_seconds": 1.16,
+      "status": "ok"
+    },
+    {
+      "number": 17,
+      "voice": "Đoan Trang",
+      "label": "Đoan Trang — Nữ · Bắc · Phong cách tự nhiên",
+      "passage": "hoi_hop",
+      "file": "17-hoi_hop.wav",
+      "duration_seconds": 11.12,
+      "elapsed_seconds": 1.8,
+      "status": "ok"
+    },
+    {
+      "number": 18,
+      "voice": "Thục Đoan",
+      "label": "Thục Đoan — Nữ · Nam · Phong cách kể chuyện",
+      "passage": "tu_su",
+      "file": "18-tu_su.wav",
+      "duration_seconds": 7.76,
+      "elapsed_seconds": 1.14,
+      "status": "ok"
+    },
+    {
+      "number": 18,
+      "voice": "Thục Đoan",
+      "label": "Thục Đoan — Nữ · Nam · Phong cách kể chuyện",
+      "passage": "hoi_hop",
+      "file": "18-hoi_hop.wav",
+      "duration_seconds": 11.76,
+      "elapsed_seconds": 1.91,
+      "status": "ok"
+    },
+    {
+      "number": 19,
+      "voice": "Minh Triết",
+      "label": "Minh Triết — Nam · Nam · Phong cách tin tức",
+      "passage": "tu_su",
+      "file": "19-tu_su.wav",
+      "duration_seconds": 7.12,
+      "elapsed_seconds": 1.14,
+      "status": "ok"
+    },
+    {
+      "number": 19,
+      "voice": "Minh Triết",
+      "label": "Minh Triết — Nam · Nam · Phong cách tin tức",
+      "passage": "hoi_hop",
+      "file": "19-hoi_hop.wav",
+      "duration_seconds": 9.68,
+      "elapsed_seconds": 1.58,
+      "status": "ok"
+    },
+    {
+      "number": 20,
+      "voice": "Mỹ Duyên",
+      "label": "Mỹ Duyên — Nữ · Nam · Phong cách đọc truyện",
+      "passage": "tu_su",
+      "file": "20-tu_su.wav",
+      "duration_seconds": 8.64,
+      "elapsed_seconds": 1.41,
+      "status": "ok"
+    },
+    {
+      "number": 20,
+      "voice": "Mỹ Duyên",
+      "label": "Mỹ Duyên — Nữ · Nam · Phong cách đọc truyện",
+      "passage": "hoi_hop",
+      "file": "20-hoi_hop.wav",
+      "duration_seconds": 13.2,
+      "elapsed_seconds": 2.15,
+      "status": "ok"
+    },
+    {
+      "number": 21,
+      "voice": "Quỳnh Anh",
+      "label": "Quỳnh Anh — Nữ · Bắc · Phong cách đọc truyện",
+      "passage": "tu_su",
+      "file": "21-tu_su.wav",
+      "duration_seconds": 7.52,
+      "elapsed_seconds": 1.21,
+      "status": "ok"
+    },
+    {
+      "number": 21,
+      "voice": "Quỳnh Anh",
+      "label": "Quỳnh Anh — Nữ · Bắc · Phong cách đọc truyện",
+      "passage": "hoi_hop",
+      "file": "21-hoi_hop.wav",
+      "duration_seconds": 11.04,
+      "elapsed_seconds": 1.79,
+      "status": "ok"
+    },
+    {
+      "number": 22,
+      "voice": "Đức Trí",
+      "label": "Đức Trí — Nam · Nam · Phong cách đọc truyện",
+      "passage": "tu_su",
+      "file": "22-tu_su.wav",
+      "duration_seconds": 9.04,
+      "elapsed_seconds": 1.45,
+      "status": "ok"
+    },
+    {
+      "number": 22,
+      "voice": "Đức Trí",
+      "label": "Đức Trí — Nam · Nam · Phong cách đọc truyện",
+      "passage": "hoi_hop",
+      "file": "22-hoi_hop.wav",
+      "duration_seconds": 13.36,
+      "elapsed_seconds": 2.18,
+      "status": "ok"
+    },
+    {
+      "number": 23,
+      "voice": "Kim Thanh",
+      "label": "Kim Thanh — Nữ · Nam · Phong cách đọc truyện",
+      "passage": "tu_su",
+      "file": "23-tu_su.wav",
+      "duration_seconds": 9.28,
+      "elapsed_seconds": 1.49,
+      "status": "ok"
+    },
+    {
+      "number": 23,
+      "voice": "Kim Thanh",
+      "label": "Kim Thanh — Nữ · Nam · Phong cách đọc truyện",
+      "passage": "hoi_hop",
+      "file": "23-hoi_hop.wav",
+      "duration_seconds": 14.8,
+      "elapsed_seconds": 2.42,
+      "status": "ok"
+    },
+    {
+      "number": 24,
+      "voice": "Adam",
+      "label": "Adam — Nam · Nam · Giọng đọc tự nhiên",
+      "passage": "tu_su",
+      "file": "24-tu_su.wav",
+      "duration_seconds": 6.56,
+      "elapsed_seconds": 0.96,
+      "status": "ok"
+    },
+    {
+      "number": 24,
+      "voice": "Adam",
+      "label": "Adam — Nam · Nam · Giọng đọc tự nhiên",
+      "passage": "hoi_hop",
+      "file": "24-hoi_hop.wav",
+      "duration_seconds": 9.52,
+      "elapsed_seconds": 1.53,
+      "status": "ok"
+    },
+    {
+      "number": 25,
+      "voice": "Mạnh Dũng",
+      "label": "Mạnh Dũng — Nam · Bắc · Phong cách tự nhiên",
+      "passage": "tu_su",
+      "file": "25-tu_su.wav",
+      "duration_seconds": 6.64,
+      "elapsed_seconds": 1.07,
+      "status": "ok"
+    },
+    {
+      "number": 25,
+      "voice": "Mạnh Dũng",
+      "label": "Mạnh Dũng — Nam · Bắc · Phong cách tự nhiên",
+      "passage": "hoi_hop",
+      "file": "25-hoi_hop.wav",
+      "duration_seconds": 9.84,
+      "elapsed_seconds": 1.59,
+      "status": "ok"
+    }
+  ]
+}
